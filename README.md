@@ -1,29 +1,16 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
-
-### What is this repository for? ###
-
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+This project integrates the differnt parts of OMOP into a running setup.  
 
 ### How do I get set up? ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+* run build.sh
 
-### Contribution guidelines ###
+## Issues
 
-* Writing tests
-* Code review
-* Other guidelines
+* DDL comes in different forms, uses different methods for naming the schema of a sub-project.
 
 ### Who do I talk to? ###
 
-* Repo owner or admin
-* Other community or team contact
+* Chris Roeder, chris.roeder@cuanschutz.edu
+* ohdsi.org of course
