@@ -3,6 +3,8 @@
 
 # This script setups up the gamut of OMOP schemata, runs DDL and loads data. For now,
 # limited to PostgreSQL.
+# Does it assume R, Python, or any packages???
+# (perhaps obviously) assumes BASH is available
 # It assumes PostgreSQL, and Tomcat have been installed and configured. 
 #   and assumes the  PG environment variables are set to working defaults.
 # It assumes Vocabulary has been selected, downloaded and placed ______________________
@@ -13,29 +15,22 @@
 # It and subsidiary scripts assume the following schema names: cdm, vocabulary, results, webapi
 # It doesn't do much for error checking and so assumes the user can identify and resolve issues.
 # 
-# TODO: collect the scripts into a repo, not WebAPI
-#DONE!  TODO: integrate/commit the split and use of schema names  in ddl between vocabulary and cdm
+#DONE! TODO: collect the scripts into a repo
+#DONE! TODO: integrate/commit the split and use of schema names  in ddl between vocabulary and cdm
 # TODO: parametrize schema names, esp cdm in cdm schema creation, ddl exec
+#       done in the schema creation scripts, not in ddl
 # TOOD: call cdm creation from CDM project as a module/function with schema name as a parameter
 #       instead of re-packaging the schema definition
 # TODO: generalize to other dialects, not just PostgreSQL
 #       This involves questions about delivering the CDM ddl in a form suitable to SQLRender 
 #       vs delivering separate versions for each database platform. The reason to use SQLRender
 #       is so the schema names can be parameterized.
-#*TODO*: fetch ddl for results from a REST endoint, edit in the schema name
-# TODO: come up with a way to distinguish the different senses of schema:
-#  - the partition of a database schema: "database schema"
-#  - the ddl and data associated with a schema: "ddl"
-#  - the design of the data put into a database : "schema design"
-# TODO pass the DB name into the run_achilles.R script
+#DONE! TODO: fetch ddl for results from a REST endoint, edit in the schema name
+#DONE! TODO pass the DB name into the run_achilles.R script
 # TODO: implement read-only on voccabulary schema
 
 # Chris Roeder
 # February, 2020
-
-# immediate TODO
-# - database name parameterization
-#   setup_postgres_db.sql
 
 
 OMOP_DISTRO=/Users/christopherroeder/work/git/omop_distro
@@ -44,11 +39,11 @@ UBER_DB_USER=christopherroeder
 GIT_BASE=/Users/christopherroeder/work/git/test_install
 DEPLOY_BASE=/Users/christopherroeder/work/test_deploy
 DB_NAME=test_install
-VOCABULARY_SCHEMA=vocabulary
-CDM_SCHEMA=cdm
-RESULTS_SCHEMA=results
-WEBAPI_SCHEMA=webapi
-SYNTHEA_SCHEMA=synthea
+VOCABULARY_SCHEMA=vocabulary # all that works for the moment is vocabulary
+CDM_SCHEMA=cdm # all that works for the moment is cdm
+RESULTS_SCHEMA=results_x
+WEBAPI_SCHEMA=webapi_x
+SYNTHEA_SCHEMA=synthea_x
 SYNTHEA_OUTPUT=$DEPLOY_BASE/synthea_output
 
 ATHENA_VOCAB=$GIT_BASE/OHDSI_Vocabulary_local
@@ -57,8 +52,10 @@ TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v9.0.31/bin/apa
 TOMCAT_DIR=apache-tomcat-9.0.31
 TOMCAT_ARCHIVE="apache-tomcat-9.0.31.tar.gz"
 TOMCAT_HOME=$DEPLOY_BASE/tomcat/$TOMCAT_DIR
-TOMCAT_URL=http://127.0.0.1:8080/
 TOMCAT_PORT=8081
+TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT/
+
+POSTGRESQL_PORT=5432
 
 
 mkdir $GIT_BASE
@@ -67,6 +64,8 @@ cd $GIT_BASE
 
 
 function message  {
+    # check status, output message and exit with exitval, if the status is not 0
+    # Ex. call:  message $? "creating db $DB_NAME failed" 3
     status=$1
     msg=$2
     exitval=$3
@@ -222,7 +221,7 @@ function results {
     # requires WebAPI and Tomcat to be up and running, is rumored to be run as part of 
     # running achilles: 
     # https://forums.ohdsi.org/t/ddl-scripts-for-results-achilles-results-derived-etc/9618/6
-    cat $GIT_BASE/Achilles/results.ddl 
+    ##cat $GIT_BASE/Achilles/results.ddl 
     wget -o - http://127.0.0.1:$TOMCAT_PORT/WebAPI/ddl/results?dialect=postgresql \
       | sed  s/results/$RESULTS_SCHEMA/g  \
       | psql -U ohdsi_admin_user $DB_NAME
@@ -231,7 +230,14 @@ function results {
 
 function achilles {
     echo "** ACHILLES"
-# hard-coded with server/database, user (connection details), and schema names
+   
+    cd $GIT_BASE/Achilles
+    cp $OMOP_DISTRO/run_achilles.R . 
+    sed -i .old s/DB_NAME/$DB_NAME/ run_achilles.R
+    sed -i .old s/PORT/$POSTGRESQL_PORT/ run_achilles.R
+    sed -i .old s/CDM_SCHEMA/$CDM_SCHEMA/ run_achilles.R
+    sed -i .old s/VOCABULARY_SCHEMA/$VOCABULARY_SCHEMA/ run_achilles.R
+    sed -i .old s/RESULTS_SCHEMA/$RESULTS_SCHEMA/ run_achilles.R
     Rscript $GIT_BASE/Achilles/run_achilles_synthea_omop.R
     message $? " achilles failed"  6
 } 
@@ -251,7 +257,10 @@ function build_webapi {
 
     ## build WebAPI with profile using dbname
     cd $GIT_BASE/WebAPI
-# The settings needs customized
+    sed -i .old1 s/PORT/$POSTGRESQL_PORT/     $OMOP_DISTRO/webapi_settings.xml
+    sed -i .old  s/SCHEMA/$WEBAPI_SCHEMA/ $OMOP_DISTRO/webapi_settings.xml
+    sed -i .old  s/DB_NAME/$DB_NAME/      $OMOP_DISTRO/webapi_settings.xml
+    cp $OMOP_DISTRO/webapi_settings.xml $GIT_BASE/WebAPI/WebAPIConfig/settings.xml
     mvn clean package -P $DB_NAME -D skipTests -s $GIT_BASE/WebAPI/WebAPIConfig/settings.xml
     message $? " WebAPI build failed" 1
 }
@@ -282,7 +291,6 @@ function install_tomcat {
         sed -i .old s/8005/8006/g conf/server.xml
         sed -i .old s/8009/8010/g conf/server.xml
     fi
-    grep 8081 conf/server.xml
     bin/startup.sh
     sleep 10
     wget http://127.0.0.1:$TOMCAT_PORT
@@ -305,35 +313,35 @@ function install_webapi {
 }
 
 function insert_source_rows {
-    echo "insert into webapi.source (source_id, source_name, source_key, source_connection, source_dialect, username, password) values (99, 'Synthea in OMOP', 'synthea_omop', 'jdbc:'jdbc:postgresql://localhost:5432/$DB_NAME, 'postgresql', 'ohsi_app_user', '');" | psql -U ohdsi_admin_user $DB_NAME
+    echo "insert into webapi.source (source_id, source_name, source_key, source_connection, source_dialect, username, password) values (99, 'Synthea in OMOP', 'synthea_omop', 'jdbc:'jdbc:postgresql://localhost:$POSTGRESQL_PORT/$DB_NAME, 'postgresql', 'ohsi_app_user', '');" | psql -U ohdsi_admin_user $DB_NAME
     echo "" 
     echo "insert into webapi.source_daimon (source_id, daimon_type, table_qualifier, priority) values (99, 0, 'cdm', 1);" | psql -U ohdsi_admin_user $DB_NAME
     echo "insert into webapi.source_daimon (source_id, daimon_type, table_qualifier, priority) values (99, 1, 'vocabulary', 1);" | psql -U ohdsi_admin_user $DB_NAME
     echo "insert into webapi.source_daimon (source_id, daimon_type, table_qualifier, priority) values (99, 2, 'results', 1);" | psql -U ohdsi_admin_user $DB_NAME
 }
 
-
-
 function atlas {
     echo "**ATLAS"
-    ##cp -r $GIT_BASE/Atlas $TOMCAT_HOME/webapps
-# create $TOMCAT_HOME/webapps/Atlas/js/config-local.js TODO
+    cp -r $GIT_BASE/Atlas $TOMCAT_HOME/webapps
+    sed -i .old1  s/NAME/Atlas/ $OMOP_DISTRO/config-local.js 
+    sed -i .old   s/PORT/$TOMCAT_PORT/ $OMOP_DISTRO/config-local.js 
+    cp $OMOP_DISTRO/config-local.js $TOMCAT_HOME/webapps/Atlas/js/
     open $TOMCAT_URL/WebAPI/Atlas
 }
 
 install_postgres
 get_git_repos 
 db_prep
-#vocabulary
-#cdm
+vocabulary
+cdm
 synthea
-#synthea_etl
-#results_schema
+synthea_etl
+results_schema
     #results
-#achilles
-#install_tomcat
+achilles
+install_tomcat
 ###achilles_web
-#build_webapi
-#install_webapi
-#insert_source_rows
-#atlas
+build_webapi
+install_webapi
+insert_source_rows
+atlas
