@@ -38,19 +38,22 @@
 
 
 OMOP_DISTRO=/Users/christopherroeder/work/git/omop_distro
-UBER_DB_USER=christopherroeder
+DB_USER=christopherroeder
+
 
 GIT_BASE=/Users/christopherroeder/work/git/test_install
 DEPLOY_BASE=/Users/christopherroeder/work/test_deploy
 DB_NAME=test_install
-VOCABULARY_SCHEMA=vocabulary # all that works for the moment is vocabulary
-CDM_SCHEMA=cdm # all that works for the moment is cdm
+VOCABULARY_SCHEMA=cdm
+CDM_SCHEMA=cdm
 RESULTS_SCHEMA=results_x
 WEBAPI_SCHEMA=webapi_x
 SYNTHEA_SCHEMA=synthea_x
 SYNTHEA_OUTPUT=$GIT_BASE/synthea/output/csv
 
 ATHENA_VOCAB=/Users/christopherroeder/work/git/misc_external/OHDSI_Vocabulary_local
+
+CDM=$GIT_BASE/CommonDataModel/PostgreSQL
 
 TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v9.0.31/bin/apache-tomcat-9.0.31.tar.gz"
 TOMCAT_DIR=apache-tomcat-9.0.31
@@ -60,8 +63,6 @@ TOMCAT_PORT=8080
 TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT/
 
 POSTGRESQL_PORT=5432
-
-
 
 
 function message  {
@@ -88,7 +89,7 @@ function shutdown_and_delete_old {
 
 function make_new {
     echo "** PostgreSQL Roles"
-    cat $OMOP_DISTRO/setup_postgres_roles.sql | psql 
+    cat $OMOP_DISTRO/setup_postgresql_roles.sql | psql 
 
     mkdir $GIT_BASE
     mkdir $DEPLOY_BASE
@@ -97,7 +98,7 @@ function make_new {
     echo "** PostgreSQL DB"
     cat $OMOP_DISTRO/setup_db.sql  \
       | sed  s/XXX/$DB_NAME/g  \
-      | psql  -U $UBER_DB_USER
+      | psql  -U $DB_USER
     message $? "creating db $DB_NAME failed" 3
 }
 
@@ -115,72 +116,109 @@ function get_git_repos {
     cd $GIT_BASE
 
     if [ ! -e Achilles ]; then
+        echo "Achilles"
         #svn export https://github.com/OHDSI/Achilles/trunk/
         #mv trunk Achilles
-        git clone --depth 1 https://github.com/OHDSI/Achilles
+        git clone --depth 1 https://github.com/OHDSI/Achilles > /dev/null
+        message $? "cloning Achilles failed" 3
     fi
 
     if [ ! -e CommonDataModel ]; then
-        svn export https://github.com/OHDSI/CommonDataModel/tags/v5.3.1
+        echo "CDM"
+        svn export https://github.com/OHDSI/CommonDataModel/tags/v5.3.1 > /dev/null
+        message $? "exporting CDM failed" 3
         mv v5.3.1 CommonDataModel
     fi
 
     if [ ! -e WebAPI ]; then
-        svn export https://github.com/OHDSI/WebAPI/tags/v2.7.6
+        echo "WebAPI"
+        svn export https://github.com/OHDSI/WebAPI/tags/v2.7.6 > /dev/null
+        message $? "exporting WebAPI failed" 3
         mv v2.7.6 WebAPI
     fi
 
     if [ ! -e ATLAS ]; then
-        svn export https://github.com/OHDSI/Atlas/tags/v2.7.6
+        echo "ATLAS"
+        svn export https://github.com/OHDSI/Atlas/tags/v2.7.6 > /dev/null
+        message $? "exporting ATLAS failed" 3
         mv v2.7.6 Atlas
     fi
 
     if [ ! -e synthea ]; then
+        echo "synthea"
         #svn export https://github.com/synthetichealth/synthea/tag/v2.5.0
         #mv v2.5.0 synthea
-        svn export https://github.com/synthetichealth/synthea/trunk
+        svn export https://github.com/synthetichealth/synthea/trunk > /dev/null
+        message $? "exporting synthea failed" 3
         mv trunk synthea
     fi
 
     if [ ! -e ETL-Synthea ]; then
-        svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr
+        echo "ETL-Synthea"
+        svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr > /dev/null
+        message $? "exporting ETL-Synthea failed" 3
         mv v0.9.3cr ETL-Synthea
     fi
 
     if [ ! -e AchillesWeb ]; then
-        svn export https://github.com/OHDSI/AchillesWeb/trunk
+        echo "AchillesWeb"
+        svn export https://github.com/OHDSI/AchillesWeb/trunk > /dev/null
+        message $? "exporting AchillesWeb failed" 3
         mv trunk AchillesWeb
     fi
 }
 
 
-function vocabulary {
-# This ddl is adapted from CommonDataModel
-    echo "** VOCABULARY"
-    cat $OMOP_DISTRO/setup_schema.sql \
-      | sed  s/XXX/$VOCABULARY_SCHEMA/g  \
-      | psql  -U ohdsi_admin_user  $DB_NAME
-# vocabulary*.ddl needs schema templating
-    cat $OMOP_DISTRO/ddl/vocabulary.ddl | psql -U ohdsi_admin_user $DB_NAME
+function  add_schema_to_ddl {
+    # also fix DATETIME2
 
-    # this is an unzipped package of vocabulary from athena
-    cd $ATHENA_VOCAB
-    cat load_copy.sql | psql -U ohdsi_admin_user $DB_NAME
-    cat $OMOP_DISTRO/ddl/vocabulary_indexes.ddl | psql -U ohdsi_admin_user $DB_NAME
-    cat $OMOP_DISTRO/ddl/vocabulary_constraints.ddl | psql -U ohdsi_admin_user $DB_NAME
-    cd $GIT_BASE
+    cd $OMOP_DISTRO
+    rm -rf new_ddl
+    mkdir new_ddl
+    cd new_ddl
+    mkdir PostgreSQL
+    cd PostgreSQL
+    
+    
+    cat $CDM/OMOP\ CDM\ postgresql\ ddl.txt |\
+      sed "s/CREATE TABLE /CREATE TABLE $CDM_SCHEMA\./" |\
+      sed "s/DATETIME2/timestamp/g" > postgresql_ddl.ddl
+    
+    cat $CDM/OMOP\ CDM\ postgresql\ constraints.txt |\
+      sed "s/ALTER TABLE /ALTER TABLE $CDM_SCHEMA\./" > postgresql_constraints.ddl
+    
+    cat $CDM/OMOP\ CDM\ postgresql\ indexes.txt  |\
+      sed "s/ALTER TABLE /ALTER TABLE $CDM_SCHEMA\./" |\
+      sed "s/ ON / ON $CDM_SCHEMA./"  |\
+      sed "s/CLUSTER /CLUSTER $CDM_SCHEMA./" > postgresql_indexes.ddl
 }
 
-
 function cdm {
-# This ddl is adapted from CommonDataModel
-    echo "** CDM $DB_NAME"
+    echo "** CDM setup schema $CDM_SCHEMA $DB_NAME"
     cat $OMOP_DISTRO/setup_schema.sql \
       | sed  s/XXX/$CDM_SCHEMA/g  \
       | psql  -U ohdsi_admin_user  $DB_NAME
-# cdm*.ddl needs schema templating
-    cat $OMOP_DISTRO/ddl/cdm.ddl | psql -U ohdsi_admin_user $DB_NAME
+    message $? "creating schema $CDM_SCHEMA in  $DB_NAME failed" 1
+
+    echo "** CDM run ddl $CDM_SCHEMA $DB_NAME"
+    cat $OMOP_DISTRO/new_ddl/PostgreSQL/postgresql_ddl.ddl | psql -U ohdsi_admin_user $DB_NAME
+    STATUS=$?
+    message $STATUS "running cdm dll $CDM_SCHEMA $DB_NAME failed" 1
+    echo "****************** $STATUS"
+
+    # this is an unzipped package of vocabulary from athena
+    echo "** CDM load vocab $CDM_SCHEMA $DB_NAME"
+    cd $ATHENA_VOCAB
+    cat $OMOP_DISTRO/load_athena.sql | sed "s/SCHEMA/$CDM_SCHEMA/g" | psql -U ohdsi_admin_user $DB_NAME
+    message $? "loading vocabulary $ATHENA_VOCAB $DB_NAME failed" 1
+
+    # these are run after loading data in synthea_etl
+    #cat $OMOP_DISTRO/new_ddl/postgresql_indexes.ddl | psql -U ohdsi_admin_user $DB_NAME
+    #cat $OMOP_DISTRO/new_ddl/postgresql_constraints.ddl | psql -U ohdsi_admin_user $DB_NAME
+
+    cd $GIT_BASE
 }
+
 
 function synthea {
     echo "** SYNTHEA"
@@ -220,10 +258,12 @@ function synthea_etl {
     cd $GIT_BASE
     
     # when done, set indexes on cdm
-    cat $OMOP_DISTRO/ddl/cdm_indexes.ddl \
+    #cat $OMOP_DISTRO/ddl/cdm_indexes.ddl  | sed  s/XXX/$CDM_SCHEMA/g   | psql -U ohdsi_admin_user $DB_NAME
+    #cat $OMOP_DISTRO/ddl/cdm_constraints.ddl  | sed  s/XXX/$CDM_SCHEMA/g   | psql -U ohdsi_admin_user $DB_NAME
+    cat $OMOP_DISTRO/new_ddl/postgresql_indexes.ddl \
       | sed  s/XXX/$CDM_SCHEMA/g  \
       | psql -U ohdsi_admin_user $DB_NAME
-    cat $OMOP_DISTRO/ddl/cdm_constraints.ddl \
+    cat $OMOP_DISTRO/new_ddl/postgresql_constraints.ddl \
       | sed  s/XXX/$CDM_SCHEMA/g  \
       | psql -U ohdsi_admin_user $DB_NAME
 }
@@ -257,7 +297,6 @@ function achilles {
     sed -i .old s/CDM_SCHEMA/$CDM_SCHEMA/ run_achilles.R
     sed -i .old s/VOCABULARY_SCHEMA/$VOCABULARY_SCHEMA/ run_achilles.R
     sed -i .old s/RESULTS_SCHEMA/$RESULTS_SCHEMA/ run_achilles.R
-  cat run_achilles.R . 
     Rscript run_achilles.R . 
     message $? " achilles failed"  6
 } 
@@ -315,14 +354,6 @@ function install_tomcat {
     rm conf/tomcat-users.xml.new1
     rm conf/tomcat-users.xml.new4
 
-    # for testing...
-    netstat -na | grep 8005
-###    if [[ "$status" == "0" ]] ; then 
-###        # there's another server here already, move out of the way
-###        echo "existing server detected, deploying this one to tomcat ports 8006 and 8010"
-###        sed -i .old s/8005/8006/g conf/server.xml
-###        sed -i .old s/8009/8010/g conf/server.xml
-###    fi
     bin/startup.sh
     sleep 10
     wget http://127.0.0.1:$TOMCAT_PORT
@@ -381,7 +412,7 @@ function test_webapi_sources {
 shutdown_and_delete_old
 make_new
 get_git_repos 
-vocabulary
+add_schema_to_ddl 
 cdm
 synthea
 synthea_etl
@@ -392,9 +423,20 @@ install_tomcat
 ######achilles_web
 build_webapi
 install_webapi
-sleep 30
+sleep 60
 insert_source_rows
 test_webapi_sources
 atlas
+
+
+#!/bin/bash
+
+# create_ddl.sh
+#
+# This script runs sed over the ddl from CommonDataModel to add schemas.
+# Limited to PostgreSQL for now.
+#
+# Chris Roeder, Feb. 2020
+
 
 
