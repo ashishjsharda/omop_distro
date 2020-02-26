@@ -89,20 +89,21 @@ function shutdown_and_delete_old {
 
 function make_new {
     echo "** PostgreSQL Roles"
-    cat $OMOP_DISTRO/setup_postgresql_roles.sql | psql 
+    cat $OMOP_DISTRO/setup_postgresql_roles.sql | \
+       sed "s/XXXUSER/$DB_USER/g" | psql 
 
     mkdir $GIT_BASE
     mkdir $DEPLOY_BASE
     cd $GIT_BASE
 
-    echo "** PostgreSQL DB"
+    echo "** PostgreSQL DB $OMOP_DISTRO"
     cat $OMOP_DISTRO/setup_db.sql  \
       | sed  s/XXX/$DB_NAME/g  \
       | psql  -U $DB_USER
     message $? "creating db $DB_NAME failed" 3
 }
 
-function get_git_repos {
+function export_git_repos {
     # tags are old:
     # achilles tags are from 2018-10, used current
     # ETL-Synthea has tag v5.3.1 from 2019-05-22, used current
@@ -155,7 +156,8 @@ function get_git_repos {
 
     if [ ! -e ETL-Synthea ]; then
         echo "ETL-Synthea"
-        svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr > /dev/null
+        ##svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr > /dev/null
+        git clone git@github.com:chrisroederucdenver/ETL-Synthea.git
         message $? "exporting ETL-Synthea failed" 3
         mv v0.9.3cr ETL-Synthea
     fi
@@ -223,22 +225,18 @@ function cdm {
 function synthea {
     echo "** SYNTHEA"
     cd $GIT_BASE/synthea
-    if [ ! -e output ] ; then
-        ./run_synthea
-        message $? " synthea failed" 4
-    else
-        echo "...using previous run of synthea"
-    fi
+    sed -i .old "s/exporter.csv.export = false/exporter.csv.export = true/" src/main/resources/synthea.properties
+    ./run_synthea
+    message $? " synthea failed" 4
     cd $GIT_BASE
 }
 
 
 function synthea_etl {
-    echo "** SYNTHEA ETL"
+    echo "** SYNTHEA ETL into $SYNTHEA_SCHEMA $DB_NAME"
     # *****
-    cat $OMOP_DISTRO/setup_schema.sql \
-      | sed  s/XXX/$SYNTHEA_SCHEMA/g  \
-      | psql  -U ohdsi_admin_user  $DB_NAME
+    cat $OMOP_DISTRO/setup_schema.sql | sed  s/XXX/$SYNTHEA_SCHEMA/g  | psql  -U ohdsi_admin_user  $DB_NAME
+
     # TODO commit tweaks to synthea and run just load.R instead
     #   assumes data in SYNTHEA_OUT as above, but hard-coded for the moment
     #   assumes vocabulary in $GIT_BASE/CommonDataModel/vocabulary
@@ -251,7 +249,6 @@ function synthea_etl {
     sed -i .old  s/CDM/$CDM_SCHEMA/ local_load.R
     sed -i .old  s/VOCABULARY/$VOCABULARY_SCHEMA/ local_load.R
     sed -i .old  "s|OUTPUT|$SYNTHEA_OUTPUT|" local_load.R
-    mkdir $SYNTHEA_OUTPUT
 
     Rscript local_load.R
     message $? " synthea etl failed" 5
@@ -270,7 +267,6 @@ function synthea_etl {
 
 
 function results_schema {
-    # requires WebAPI and Tomcat to be up and running
     echo "** RESULTS SCHEMA"
     cat $OMOP_DISTRO/setup_schema.sql \
       | sed  s/XXX/$RESULTS_SCHEMA/g  \
@@ -398,6 +394,7 @@ function atlas {
 
 function test_webapi_sources {
     wget http://127.0.0.1:$TOMCAT_PORT/WebAPI/source/sources
+    message $? " wgetting WebAPI sources failed" 1
     CONTENTS=$(cat sources)
     rm sources
     if [[ $CONTENTS == '[]' ]] ;then
@@ -409,17 +406,19 @@ function test_webapi_sources {
 }
 
 ##install_postgres
-shutdown_and_delete_old
-make_new
-get_git_repos 
-add_schema_to_ddl 
-cdm
-synthea
-synthea_etl
+
+#shutdown_and_delete_old
+#make_new
+export_git_repos 
+#add_schema_to_ddl 
+#cdm
+#synthea
+
+##########synthea_etl
 results_schema
-##get_results_ddl
-achilles
-install_tomcat
+#####get_results_ddl
+##achilles
+##install_tomcat
 ######achilles_web
 build_webapi
 install_webapi
