@@ -248,7 +248,8 @@ function synthea_etl {
     sed -i .old  s/SYNTHEA/$SYNTHEA_SCHEMA/ local_load.R
     sed -i .old  s/CDM/$CDM_SCHEMA/ local_load.R
     sed -i .old  s/VOCABULARY/$VOCABULARY_SCHEMA/ local_load.R
-    sed -i .old  "s|OUTPUT|$SYNTHEA_OUTPUT|" local_load.R
+    sed -i .old  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" local_load.R
+    mkdir $SYNTHEA_OUTPUT
 
     Rscript local_load.R
     message $? " synthea etl failed" 5
