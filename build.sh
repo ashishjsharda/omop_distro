@@ -223,7 +223,7 @@ function cdm {
 
 
 function synthea {
-    echo "** SYNTHEA"
+    echo "** SYNTHEA $GIT_BASE/synthea"
     cd $GIT_BASE/synthea
     sed -i .old "s/exporter.csv.export = false/exporter.csv.export = true/" src/main/resources/synthea.properties
     ./run_synthea
@@ -408,18 +408,17 @@ function test_webapi_sources {
 
 ##install_postgres
 
-#shutdown_and_delete_old
-#make_new
+shutdown_and_delete_old
+make_new
 export_git_repos 
-#add_schema_to_ddl 
-#cdm
-#synthea
-
-##########synthea_etl
+add_schema_to_ddl 
+cdm
+synthea
+synthea_etl
 results_schema
 #####get_results_ddl
-##achilles
-##install_tomcat
+achilles
+install_tomcat
 ######achilles_web
 build_webapi
 install_webapi
@@ -427,16 +426,5 @@ sleep 60
 insert_source_rows
 test_webapi_sources
 atlas
-
-
-#!/bin/bash
-
-# create_ddl.sh
-#
-# This script runs sed over the ddl from CommonDataModel to add schemas.
-# Limited to PostgreSQL for now.
-#
-# Chris Roeder, Feb. 2020
-
 
 
