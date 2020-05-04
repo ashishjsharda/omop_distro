@@ -7,20 +7,19 @@
 # To run: 
 #   download vocabulary from ATHENA
 #   install postgresql
-#   clone git@github.com:chrisroederucdenver/omop_distro.git
+#   clone git@github.com:chrisroederucdenver/omop_distro.git (this repository)
 #   edit locations in variables below: GIT_BASE, DEPLOY_BASE, DB_NAME, ATHENA_VOCAB
-#   run build.sh
+#   run build.sh (this script)
 # It will bring up an ATLAS web page.
 #
 # ASSUMPTIONS:
 # (perhaps obviously) BASH is available
 # R is installed
 # It assumes PostgreSQL has been installed and configured. 
-#   and assumes the  PG environment variables are set to working defaults.
+#   and assumes the  PG environment variables are set to working defaults, and the
+#   current user has permissions 
 # It doesn't do much for error checking and so assumes the user can identify and resolve issues.
 # 
-#DONE! TODO: collect the scripts into a repo
-#DONE! TODO: integrate/commit the split and use of schema names  in ddl between vocabulary and cdm
 # TODO: parametrize schema names, esp cdm in cdm schema creation, ddl exec
 #       done in the schema creation scripts, not in ddl
 # TOOD: call cdm creation from CDM project as a module/function with schema name as a parameter
@@ -29,21 +28,24 @@
 #       This involves questions about delivering the CDM ddl in a form suitable to SQLRender 
 #       vs delivering separate versions for each database platform. The reason to use SQLRender
 #       is so the schema names can be parameterized.
-#DONE! TODO: fetch ddl for results from a REST endoint, edit in the schema name
-#DONE! TODO pass the DB name into the run_achilles.R script
 # TODO: implement read-only on voccabulary schema
 
 # Chris Roeder
 # February, 2020
 
 
-OMOP_DISTRO=/Users/christopherroeder/work/git/omop_distro
-DB_USER=christopherroeder
+#ME=/Users/christopherroeder/work/
+ME=/Users/croeder/work
+#DB_USER=christopherroeder
+DB_USER=croeder
+
+OMOP_DISTRO=$ME/git/omop_distro
 
 
-GIT_BASE=/Users/christopherroeder/work/git/test_install
-DEPLOY_BASE=/Users/christopherroeder/work/test_deploy
-DB_NAME=test_install
+GIT_BASE=$ME/git/test_install_2
+DEPLOY_BASE=$ME/test_deploy_2
+DB_NAME=test_install_2
+
 VOCABULARY_SCHEMA=cdm
 CDM_SCHEMA=cdm
 RESULTS_SCHEMA=results_x
@@ -51,7 +53,7 @@ WEBAPI_SCHEMA=webapi_x
 SYNTHEA_SCHEMA=synthea_x
 SYNTHEA_OUTPUT=$GIT_BASE/synthea/output/csv
 
-ATHENA_VOCAB=/Users/christopherroeder/work/git/misc_external/OHDSI_Vocabulary_local
+ATHENA_VOCAB=$GIT_BASE/misc_external/athena_vocabulary
 
 CDM=$GIT_BASE/CommonDataModel/PostgreSQL
 
@@ -113,6 +115,7 @@ function export_git_repos {
     # CommonDataModel tags are last from 2018-10-11, v5.3.1
     # WebAPI has tag v2.7.6 from 2020-01-22, still used current
     # Atlas has v.2.7.6 from 2020-01-23, used current
+    #   ...I've seen 2.6 recommended https://forums.ohdsi.org/t/atlas-setup-failing/5858/2 
     
     cd $GIT_BASE
 
@@ -245,7 +248,7 @@ function synthea_etl {
     # ** TODO reconcile ETL here into its own CDM schema with CDM schema setup above!! **
     cd $GIT_BASE/ETL-Synthea
     sed -i .old1 s/DB_NAME/$DB_NAME/ local_load.R
-    sed -i .old  s/SYNTHEA/$SYNTHEA_SCHEMA/ local_load.R
+    sed -i .old  s/SYNTHEA_SCHEMA/$SYNTHEA_SCHEMA/ local_load.R
     sed -i .old  s/CDM/$CDM_SCHEMA/ local_load.R
     sed -i .old  s/VOCABULARY/$VOCABULARY_SCHEMA/ local_load.R
     sed -i .old  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" local_load.R
