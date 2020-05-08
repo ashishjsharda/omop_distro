@@ -13,6 +13,9 @@ COMMENT ON ROLE ohdsi_app
 CREATE ROLE ohdsi_admin_user LOGIN ENCRYPTED PASSWORD 'md58d34c863380040dd6e1795bd088ff4a9'
    VALID UNTIL 'infinity';
 GRANT ohdsi_admin TO ohdsi_admin_user;
+GRANT ohdsi_admin TO XXXUSER;
+
+
 COMMENT ON ROLE ohdsi_admin_user
   IS 'Admin user account for OHDSI applications';
 

@@ -1,5 +1,6 @@
 #!/bin/bash
-
+set -euf
+set -o pipefail
 
 # This script setups up the gamut of OMOP schemata, runs DDL and loads data. For now,
 # limited to PostgreSQL.
@@ -33,6 +34,10 @@
 # Chris Roeder
 # February, 2020
 
+# get this from the environment.
+## ATHENA_USER=
+## ATHENA_PASSWORD=
+
 
 #ME=/Users/christopherroeder/work/
 ME=/Users/croeder/work
@@ -53,7 +58,7 @@ WEBAPI_SCHEMA=webapi_x
 SYNTHEA_SCHEMA=synthea_x
 SYNTHEA_OUTPUT=$GIT_BASE/synthea/output/csv
 
-ATHENA_VOCAB=$GIT_BASE/misc_external/athena_vocabulary
+ATHENA_VOCAB=$ME/git//misc_external/athena_vocabulary
 
 CDM=$GIT_BASE/CommonDataModel/PostgreSQL
 
@@ -83,13 +88,14 @@ function message  {
 
 
 function shutdown_and_delete_old {
-    $TOMCAT_HOME/bin/shutdown.sh
+#    $TOMCAT_HOME/bin/shutdown.sh
     dropdb $DB_NAME
     rm -rf $GIT_BASE
     rm -rf $DEPLOY_BASE
 }
 
 function make_new {
+    echo ""
     echo "** PostgreSQL Roles"
     cat $OMOP_DISTRO/setup_postgresql_roles.sql | \
        sed "s/XXXUSER/$DB_USER/g" | psql 
@@ -106,6 +112,8 @@ function make_new {
 }
 
 function export_git_repos {
+    echo ""
+    echo "** EXPORT REPOS"
     # tags are old:
     # achilles tags are from 2018-10, used current
     # ETL-Synthea has tag v5.3.1 from 2019-05-22, used current
@@ -120,7 +128,7 @@ function export_git_repos {
     cd $GIT_BASE
 
     if [ ! -e Achilles ]; then
-        echo "Achilles"
+        echo "cloning Achilles"
         #svn export https://github.com/OHDSI/Achilles/trunk/
         #mv trunk Achilles
         git clone --depth 1 https://github.com/OHDSI/Achilles > /dev/null
@@ -128,28 +136,28 @@ function export_git_repos {
     fi
 
     if [ ! -e CommonDataModel ]; then
-        echo "CDM"
+        echo "exporting CDM"
         svn export https://github.com/OHDSI/CommonDataModel/tags/v5.3.1 > /dev/null
         message $? "exporting CDM failed" 3
         mv v5.3.1 CommonDataModel
     fi
 
     if [ ! -e WebAPI ]; then
-        echo "WebAPI"
+        echo "exporting WebAPI"
         svn export https://github.com/OHDSI/WebAPI/tags/v2.7.6 > /dev/null
         message $? "exporting WebAPI failed" 3
         mv v2.7.6 WebAPI
     fi
 
     if [ ! -e ATLAS ]; then
-        echo "ATLAS"
+        echo "exporting ATLAS"
         svn export https://github.com/OHDSI/Atlas/tags/v2.7.6 > /dev/null
         message $? "exporting ATLAS failed" 3
         mv v2.7.6 Atlas
     fi
 
     if [ ! -e synthea ]; then
-        echo "synthea"
+        echo "exporting synthea"
         #svn export https://github.com/synthetichealth/synthea/tag/v2.5.0
         #mv v2.5.0 synthea
         svn export https://github.com/synthetichealth/synthea/trunk > /dev/null
@@ -158,15 +166,15 @@ function export_git_repos {
     fi
 
     if [ ! -e ETL-Synthea ]; then
-        echo "ETL-Synthea"
+        echo "exporting ETL-Synthea"
         ##svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr > /dev/null
         git clone git@github.com:chrisroederucdenver/ETL-Synthea.git
         message $? "exporting ETL-Synthea failed" 3
-        mv v0.9.3cr ETL-Synthea
+        #mv v0.9.3cr ETL-Synthea
     fi
 
     if [ ! -e AchillesWeb ]; then
-        echo "AchillesWeb"
+        echo "exporting AchillesWeb"
         svn export https://github.com/OHDSI/AchillesWeb/trunk > /dev/null
         message $? "exporting AchillesWeb failed" 3
         mv trunk AchillesWeb
@@ -175,6 +183,8 @@ function export_git_repos {
 
 
 function  add_schema_to_ddl {
+    echo ""
+    echo "** ADD SCHEMA"
     # also fix DATETIME2
 
     cd $OMOP_DISTRO
@@ -183,22 +193,33 @@ function  add_schema_to_ddl {
     cd new_ddl
     mkdir PostgreSQL
     cd PostgreSQL
+    cp $CDM/OMOP\ CDM\ postgresql\ constraints.txt .
+    cp $CDM/OMOP\ CDM\ postgresql\ ddl.txt .
+    cp $CDM/OMOP\ CDM\ postgresql\ indexes.txt .
     
-    
-    cat $CDM/OMOP\ CDM\ postgresql\ ddl.txt |\
-      sed "s/CREATE TABLE /CREATE TABLE $CDM_SCHEMA\./" |\
-      sed "s/DATETIME2/timestamp/g" > postgresql_ddl.ddl
-    
-    cat $CDM/OMOP\ CDM\ postgresql\ constraints.txt |\
-      sed "s/ALTER TABLE /ALTER TABLE $CDM_SCHEMA\./" > postgresql_constraints.ddl
-    
-    cat $CDM/OMOP\ CDM\ postgresql\ indexes.txt  |\
-      sed "s/ALTER TABLE /ALTER TABLE $CDM_SCHEMA\./" |\
-      sed "s/ ON / ON $CDM_SCHEMA./"  |\
-      sed "s/CLUSTER /CLUSTER $CDM_SCHEMA./" > postgresql_indexes.ddl
+    SET_SCHEMA="set search_path to $CDM_SCHEMA;"
+
+    # DDL
+    sed  "39i\\
+          $SET_SCHEMA\\
+    " $CDM/OMOP\ CDM\ postgresql\ ddl.txt  > /tmp/ddl.txt
+    mv /tmp/ddl.txt $CDM/OMOP\ CDM\ postgresql\ ddl.txt
+
+    # CONSTRAINTS 
+    sed  "39i\\
+          $SET_SCHEMA\\
+    " $CDM/OMOP\ CDM\ postgresql\ constraints.txt  > /tmp/constraints.txt
+    mv /tmp/constraints.txt $CDM/OMOP\ CDM\ postgresql\ constraints.txt
+
+    # INDEXES 
+    sed  "39i\\
+          $SET_SCHEMA\\
+    " $CDM/OMOP\ CDM\ postgresql\ indexes.txt  > /tmp/indexes.txt
+    mv /tmp/indexes.txt $CDM/OMOP\ CDM\ postgresql\ indexes.txt
 }
 
 function cdm {
+    echo ""
     echo "** CDM setup schema $CDM_SCHEMA $DB_NAME"
     cat $OMOP_DISTRO/setup_schema.sql \
       | sed  s/XXX/$CDM_SCHEMA/g  \
@@ -206,26 +227,37 @@ function cdm {
     message $? "creating schema $CDM_SCHEMA in  $DB_NAME failed" 1
 
     echo "** CDM run ddl $CDM_SCHEMA $DB_NAME"
-    cat $OMOP_DISTRO/new_ddl/PostgreSQL/postgresql_ddl.ddl | psql -U ohdsi_admin_user $DB_NAME
+    cat $CDM/OMOP\ CDM\ postgresql\ ddl.txt  | psql -U ohdsi_admin_user $DB_NAME
     STATUS=$?
     message $STATUS "running cdm dll $CDM_SCHEMA $DB_NAME failed" 1
     echo "****************** $STATUS"
+}
 
+function athena {
+    echo ""
+    echo "** LOAD ATHENA VOCABULARIES"
     # this is an unzipped package of vocabulary from athena
     echo "** CDM load vocab $CDM_SCHEMA $DB_NAME"
     cd $ATHENA_VOCAB
+
+    # need to prepare CONCEPT.csv with CPT4, if its included
+    # (might be nice if there was a way to tell this had been done:grep CTP4??) TODO
+ #   chmod 755 cpt.sh
+ #   ./cpt.sh $UMLS_USER $UMLS_PASSWORD
+
+    # my release has a VOCABULARY.csv with consecutive tabs for the 4th column and it's not-null.
+    cp VOCABULARY.csv VOCABULARY.csv.org 
+    cat VOCABULARY.csv | sed "s/          /               /g" > /tmp/vocab.csv
+    mv /tmp/vocab.csv VOCABULARY.csv
+
     cat $OMOP_DISTRO/load_athena.sql | sed "s/SCHEMA/$CDM_SCHEMA/g" | psql -U ohdsi_admin_user $DB_NAME
     message $? "loading vocabulary $ATHENA_VOCAB $DB_NAME failed" 1
-
-    # these are run after loading data in synthea_etl
-    #cat $OMOP_DISTRO/new_ddl/postgresql_indexes.ddl | psql -U ohdsi_admin_user $DB_NAME
-    #cat $OMOP_DISTRO/new_ddl/postgresql_constraints.ddl | psql -U ohdsi_admin_user $DB_NAME
-
     cd $GIT_BASE
 }
 
 
 function synthea {
+    echo ""
     echo "** SYNTHEA $GIT_BASE/synthea"
     cd $GIT_BASE/synthea
     sed -i .old "s/exporter.csv.export = false/exporter.csv.export = true/" src/main/resources/synthea.properties
@@ -236,9 +268,15 @@ function synthea {
 
 
 function synthea_etl {
+    echo ""
     echo "** SYNTHEA ETL into $SYNTHEA_SCHEMA $DB_NAME"
+    ### NB. synthea_etl is built to do a lot of what happens here
+    ### Need to identify the overlap and separate it. Consider the role of synthea in this project...
+    ### ...or the existence of this project as anything more than a learning exercise.
+
     # *****
     cat $OMOP_DISTRO/setup_schema.sql | sed  s/XXX/$SYNTHEA_SCHEMA/g  | psql  -U ohdsi_admin_user  $DB_NAME
+    message $? " schema setup failed" 5
 
     # TODO commit tweaks to synthea and run just load.R instead
     #   assumes data in SYNTHEA_OUT as above, but hard-coded for the moment
@@ -248,46 +286,63 @@ function synthea_etl {
     # ** TODO reconcile ETL here into its own CDM schema with CDM schema setup above!! **
     cd $GIT_BASE/ETL-Synthea
     sed -i .old1 s/DB_NAME/$DB_NAME/ local_load.R
+    message $? " synthea sed 1 failed" 5
     sed -i .old  s/SYNTHEA_SCHEMA/$SYNTHEA_SCHEMA/ local_load.R
+    message $? " synthea sed 2 failed" 5
     sed -i .old  s/CDM/$CDM_SCHEMA/ local_load.R
+    message $? " synthea sed 3 failed" 5
     sed -i .old  s/VOCABULARY/$VOCABULARY_SCHEMA/ local_load.R
+    message $? " synthea sed 4 failed" 5
     sed -i .old  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" local_load.R
-    mkdir $SYNTHEA_OUTPUT
+    message $? " synthea sed 5 failed" 5
+    if [[! -d $SYNTHEA_OUTPUT ]]; then
+        mkdir -f $SYNTHEA_OUTPUT
+    fi
 
     Rscript local_load.R
     message $? " synthea etl failed" 5
     cd $GIT_BASE
-    
+   
+}
+ 
+function indexes {
+    echo ""
+    echo "** INDEXES"
     # when done, set indexes on cdm
-    #cat $OMOP_DISTRO/ddl/cdm_indexes.ddl  | sed  s/XXX/$CDM_SCHEMA/g   | psql -U ohdsi_admin_user $DB_NAME
-    #cat $OMOP_DISTRO/ddl/cdm_constraints.ddl  | sed  s/XXX/$CDM_SCHEMA/g   | psql -U ohdsi_admin_user $DB_NAME
-    cat $OMOP_DISTRO/new_ddl/postgresql_indexes.ddl \
-      | sed  s/XXX/$CDM_SCHEMA/g  \
-      | psql -U ohdsi_admin_user $DB_NAME
-    cat $OMOP_DISTRO/new_ddl/postgresql_constraints.ddl \
-      | sed  s/XXX/$CDM_SCHEMA/g  \
-      | psql -U ohdsi_admin_user $DB_NAME
+      ## | sed  s/XXX/$CDM_SCHEMA/g  \
+ #   cat $CDM/OMOP\ CDM\ postgresql\ indexes.txt | psql -U ohdsi_admin_user $DB_NAME
+ #   message $? " indexes failed" 6 
+
+      ## | sed  s/XXX/$CDM_SCHEMA/g  \
+    cat $CDM/OMOP\ CDM\ postgresql\ constraints.txt | psql -U ohdsi_admin_user $DB_NAME
+    message $? " constraints failed" 7
 }
 
 
 function results_schema {
+    echo ""
     echo "** RESULTS SCHEMA"
     cat $OMOP_DISTRO/setup_schema.sql \
       | sed  s/XXX/$RESULTS_SCHEMA/g  \
       | psql  -U ohdsi_admin_user  $DB_NAME
+    message $? " results schema failed" 7
 }
 
 function get_results_ddl {
+    echo ""
+    echo "** RESULTS SCHEMA"
     # Achilles sets this up based on its config.
     # Here as a way of debugging.
     # https://forums.ohdsi.org/t/ddl-scripts-for-results-achilles-results-derived-etc/9618/6
     wget -o - http://127.0.0.1:$TOMCAT_PORT/WebAPI/ddl/results?dialect=postgresql \
       | sed  s/results/$RESULTS_SCHEMA/g  \
       | psql -U ohdsi_admin_user $DB_NAME
+    message $? " get_results_ddl failed" 7
 }
 
 
 function achilles {
+    echo ""
     echo "** ACHILLES"
    
     cd $GIT_BASE/Achilles
@@ -303,7 +358,8 @@ function achilles {
 
 
 function achilles_web {
-    echo "** achilles web "
+    echo ""
+    echo "** ACHILLES WEB "
     cp -r $GIT_BASE/AchillesWeb $TOMCAT_HOME/webapps
     mkdir $TOMCAT_HOME/webapps/AchillesWeb/data
     echo "{ \"datasources\":[ { \"name\":\"$DB_NAME\", \"folder\":\"SAMPLE\", \"cdmVersion\": 5 } ] } " > $TOMCAT_HOME/webapps/AchillesWeb/data/datasources.json
@@ -312,6 +368,7 @@ function achilles_web {
 }
 
 function build_webapi {
+    echo ""
     echo "** build WEBAPI"
 
     ## build WebAPI with profile using dbname
@@ -327,10 +384,12 @@ function build_webapi {
 }
 
 function install_postgres {
+    echo ""
     echo "install_postgres? ...not yet" 
 }
 
 function install_tomcat {
+    echo ""
     echo "** TOMCAT"
     kill $(ps -aef | grep tomcat | awk '{print $2}')
     cd $DEPLOY_BASE
@@ -364,6 +423,7 @@ function install_tomcat {
 }
 
 function install_webapi {
+    echo ""
     echo "** install WEBAPI"
     cat $OMOP_DISTRO/setup_schema.sql \
       | sed  s/XXX/$WEBAPI_SCHEMA/g  \
@@ -375,6 +435,8 @@ function install_webapi {
 }
 
 function insert_source_rows {
+    echo ""
+    echo " ** INSERT SOURCE ROWS "
     echo "delete from $WEBAPI_SCHEMA.source_daimon;" | psql $DB_NAME
 
     echo "insert into $WEBAPI_SCHEMA.source (source_id, source_name, source_key, source_connection, source_dialect, username, password) values (99, 'Synthea in OMOP', '$DB_NAME', 'jdbc:postgresql://localhost:$POSTGRESQL_PORT/$DB_NAME', 'postgresql', 'ohdsi_app_user', '');" | psql -U ohdsi_admin_user $DB_NAME
@@ -388,6 +450,7 @@ function insert_source_rows {
 }
 
 function atlas {
+    echo ""
     echo "**ATLAS"
     cp -r $GIT_BASE/Atlas $TOMCAT_HOME/webapps
     cp $OMOP_DISTRO/config-local.js $TOMCAT_HOME/webapps/Atlas/js/
@@ -397,6 +460,8 @@ function atlas {
 }
 
 function test_webapi_sources {
+    echo ""
+    echo "** TEST WEBAPI SOURCES"
     wget http://127.0.0.1:$TOMCAT_PORT/WebAPI/source/sources
     message $? " wgetting WebAPI sources failed" 1
     CONTENTS=$(cat sources)
@@ -410,24 +475,30 @@ function test_webapi_sources {
 }
 
 ##install_postgres
+##shutdown_and_delete_old
+##make_new
+##export_git_repos 
+##add_schema_to_ddl 
+#cdm
 
-shutdown_and_delete_old
-make_new
-export_git_repos 
-add_schema_to_ddl 
-cdm
-synthea
-synthea_etl
-results_schema
+#athena
+#synthea
+#synthea_etl
+indexes
+#results_schema
 #####get_results_ddl
-achilles
-install_tomcat
+#achilles
 ######achilles_web
-build_webapi
-install_webapi
-sleep 60
-insert_source_rows
-test_webapi_sources
-atlas
+
+if false
+then
+    install_tomcat
+    build_webapi
+    install_webapi
+    sleep 60
+    insert_source_rows
+    test_webapi_sources
+    atlas
+fi
 
 
