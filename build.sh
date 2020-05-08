@@ -65,9 +65,11 @@ ATHENA_VOCAB=$ME/git//misc_external/athena_vocabulary
 
 CDM=$GIT_BASE/CommonDataModel/PostgreSQL
 
-TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v9.0.31/bin/apache-tomcat-9.0.31.tar.gz"
-TOMCAT_DIR=apache-tomcat-9.0.31
-TOMCAT_ARCHIVE="apache-tomcat-9.0.31.tar.gz"
+TOMCAT_RELEASE=9.0.34
+TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v${TOMCAT_RELEASE}/bin/apache-tomcat-${TOMCAT_RELEASE}.tar.gz"
+TOMCAT_DIR=apache-tomcat-${TOMCAT_RELEASE}
+TOMCAT_ARCHIVE="apache-tomcat-${TOMCAT_RELEASE}.tar.gz"
+
 TOMCAT_HOME=$DEPLOY_BASE/tomcat/$TOMCAT_DIR
 TOMCAT_PORT=8080
 TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT/
@@ -190,18 +192,7 @@ function export_git_repos {
 function  add_schema_to_ddl {
     echo ""
     echo "** ADD SCHEMA"
-    # also fix DATETIME2
-
     cd $OMOP_DISTRO
-    rm -rf new_ddl
-    mkdir new_ddl
-    cd new_ddl
-    mkdir PostgreSQL
-    cd PostgreSQL
-    cp $CDM/OMOP\ CDM\ postgresql\ constraints.txt .
-    cp $CDM/OMOP\ CDM\ postgresql\ ddl.txt .
-    cp $CDM/OMOP\ CDM\ postgresql\ indexes.txt .
-
     SET_SCHEMA="set search_path to $CDM_SCHEMA;"
 
     # DDL
@@ -319,8 +310,8 @@ function indexes {
     echo "** INDEXES"
     # when done, set indexes on cdm
       ## | sed  s/XXX/$CDM_SCHEMA/g  \
- #   cat $CDM/OMOP\ CDM\ postgresql\ indexes.txt | psql -U ohdsi_admin_user $DB_NAME
- #   message $? " indexes failed" 6
+    cat $CDM/OMOP\ CDM\ postgresql\ indexes.txt | psql -U ohdsi_admin_user $DB_NAME
+    message $? " indexes failed" 6
 
       ## | sed  s/XXX/$CDM_SCHEMA/g  \
     cat $CDM/OMOP\ CDM\ postgresql\ constraints.txt | psql -U ohdsi_admin_user $DB_NAME
@@ -339,14 +330,17 @@ function results_schema {
 
 function get_results_ddl {
     echo ""
-    echo "** RESULTS SCHEMA"
+    echo "** RESULTS DDL"
     # Achilles sets this up based on its config.
     # Here as a way of debugging.
     # https://forums.ohdsi.org/t/ddl-scripts-for-results-achilles-results-derived-etc/9618/6
-    wget -o - http://127.0.0.1:$TOMCAT_PORT/WebAPI/ddl/results?dialect=postgresql \
-      | sed  s/results/$RESULTS_SCHEMA/g  \
+    wget -o - http://127.0.0.1:$TOMCAT_PORT/WebAPI/ddl/results?dialect=postgresql > results.ddl
+    message $? " get_results_ddl failed wget" 7
+    echo "got results.ddl...."
+    cat results.ddl | sed  s/results/$RESULTS_SCHEMA/g  \
       | psql -U ohdsi_admin_user $DB_NAME
     message $? " get_results_ddl failed" 7
+    echo "...must be  int he db now."
 }
 
 
@@ -479,27 +473,27 @@ function test_webapi_sources {
     fi
 }
 
-shutdown_and_delete_old
-make_new
-export_git_repos
-add_schema_to_ddl
-cdm
-
-athena
-synthea
-synthea_etl
-indexes
-#results_schema
-#####get_results_ddl
-#achilles
-######achilles_web
-
-if false
+if true
+then
+    shutdown_and_delete_old
+    make_new
+    export_git_repos
+    add_schema_to_ddl
+    cdm
+    athena
+    synthea
+    synthea_etl
+    indexes
+    achilles
+    achilles_web
+if true
 then
     install_tomcat
     build_webapi
     install_webapi
     sleep 60
+    results_schema
+    get_results_ddl
     insert_source_rows
     test_webapi_sources
     atlas
