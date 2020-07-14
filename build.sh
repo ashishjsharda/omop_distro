@@ -36,7 +36,7 @@ set -o pipefail
 # Chris Roeder
 # February, 2020
 
-
+. build_passwords.sh
 
 #ME=/Users/christopherroeder/work/
 #DB_USER=christopherroeder
@@ -46,19 +46,17 @@ DB_USER=croeder
 OMOP_DISTRO=$ME/git/omop_distro
 
 DO_CPT4=true
-UMLS_USER=croeder6000
-UMLS_PASSWORD=$1
 echo "got $UMLS_PASSWORD for UMLS_PASSWORD"
 
-GIT_BASE=$ME/git/test_install_3
-DEPLOY_BASE=$ME/test_deploy_3
-DB_NAME=test_install_3
+GIT_BASE=$ME/git/test_install_gc
+DEPLOY_BASE=$ME/test_deploy_gc
+DB_NAME=test_install_gc
 
 VOCABULARY_SCHEMA=cdm
 CDM_SCHEMA=cdm
-RESULTS_SCHEMA=results_x
-WEBAPI_SCHEMA=webapi_x
-SYNTHEA_SCHEMA=synthea_x
+RESULTS_SCHEMA=results
+WEBAPI_SCHEMA=webapi
+SYNTHEA_SCHEMA=synthea
 SYNTHEA_OUTPUT=$GIT_BASE/synthea/output/csv
 
 ATHENA_VOCAB=$ME/git//misc_external/athena_vocabulary
@@ -237,7 +235,7 @@ function athena {
     cd $ATHENA_VOCAB
 
     # need to prepare CONCEPT.csv with CPT4, if its included
-    # (might be nice if there was a way to tell this had been done:grep CTP4??) TODO
+    # (might be nice if there was a way to tell this had been done:grep CPT4??) TODO
     if $DO_CPT4 ; then
         chmod 755 cpt.sh
         ./cpt.sh $UMLS_USER $UMLS_PASSWORD
@@ -274,6 +272,7 @@ function synthea_etl {
     ### Need to identify the overlap and separate it. Consider the role of synthea in this project...
     ### ...or the existence of this project as anything more than a learning exercise.
 
+    echo "drop schema $SYNTHEA_SCHEMA cascade" | psql  -U ohdsi_admin_user  $DB_NAME
     # *****
     cat $OMOP_DISTRO/setup_schema.sql | sed  s/XXX/$SYNTHEA_SCHEMA/g  | psql  -U ohdsi_admin_user  $DB_NAME
     message $? " schema setup failed" 5
@@ -295,8 +294,8 @@ function synthea_etl {
     message $? " synthea sed 4 failed" 5
     sed -i .old  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" local_load.R
     message $? " synthea sed 5 failed" 5
-    if [[! -d $SYNTHEA_OUTPUT ]]; then
-        mkdir -f $SYNTHEA_OUTPUT
+    if [ -d $SYNTHEA_OUTPUT ]; then    ## TODO
+        mkdir -p $SYNTHEA_OUTPUT 
     fi
 
     Rscript local_load.R
@@ -406,7 +405,7 @@ function install_tomcat {
     sed -i .old s/8080/$TOMCAT_PORT/g conf/server.xml
     cat conf/tomcat-users.xml      | awk 'NR==44 {print " <role rolename=\"manager-gui\"/>  " } {print}' > conf/tomcat-users.xml.new1
     cat conf/tomcat-users.xml.new1 | awk 'NR==45 {print " <role rolename=\"tomcat\"/>  " } {print}' > conf/tomcat-users.xml.new4
-    cat conf/tomcat-users.xml.new4 | awk 'NR==46 {print "<user username=\"tomcat\" password=\"Harmonization\" roles=\"tomcat,manager-gui\"/>" } {print}' > conf/tomcat-users.xml.new
+    cat conf/tomcat-users.xml.new4 | awk 'NR==46 {print "<user username=\"tomcat\" password=$TOMCAT_PASSWORD roles=\"tomcat,manager-gui\"/>" } {print}' > conf/tomcat-users.xml.new
     mv conf/tomcat-users.xml conf/tomcat-users.xml.old
     mv conf/tomcat-users.xml.new conf/tomcat-users.xml
     rm conf/tomcat-users.xml.new1
@@ -473,21 +472,18 @@ function test_webapi_sources {
     fi
 }
 
-if true
-then
-    shutdown_and_delete_old
-    make_new
-    export_git_repos
-    add_schema_to_ddl
-    cdm
-    athena
-    synthea
+
+#    shutdown_and_delete_old
+#    make_new
+#    export_git_repos
+#    add_schema_to_ddl
+#    cdm
+#    athena
+#    synthea
     synthea_etl
     indexes
     achilles
     achilles_web
-if true
-then
     install_tomcat
     build_webapi
     install_webapi
@@ -497,6 +493,5 @@ then
     insert_source_rows
     test_webapi_sources
     atlas
-fi
 
 
