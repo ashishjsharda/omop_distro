@@ -38,10 +38,10 @@ function export_git_repos {
 
     if [ ! -e ETL-Synthea ]; then
         echo "exporting ETL-Synthea"
-        ##svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr > /dev/null
-        git clone git@github.com:chrisroederucdenver/ETL-Synthea.git
+        svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr > /dev/null
+        mv v0.9.3cr ETL-Synthea
+        ##git clone git@github.com:chrisroederucdenver/ETL-Synthea.git # head is for CMD v6
         message $? "exporting ETL-Synthea failed" 3
-        #mv v0.9.3cr ETL-Synthea
     fi
 }
 
@@ -55,34 +55,63 @@ function synthea {
     cd $GIT_BASE
 }
 
-function synthea_etl {
+function sed_file {
+    echo " * editting $1"
+    sed -i .old1  "s/DB_NAME/$DB_NAME/" $1
+    sed -i .old2  "s/SYNTHEA_SCHEMA/$SYNTHEA_SCHEMA/" $1
+    sed -i .old3  "s/CDM/$CDM_SCHEMA/" $1
+    sed -i .old4  "s/VOCABULARY/$VOCABULARY_SCHEMA/" $1
+    sed -i .old5  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" $1
+}
+
+function load_synthea {
     echo ""
-    echo "** SYNTHEA ETL into $SYNTHEA_SCHEMA $DB_NAME $SYNTHEA_OUTPUT"
+    echo "** LOAD RAW SYNTHEA ETL"
 
     echo "drop schema $SYNTHEA_SCHEMA cascade" | psql  -U ohdsi_admin_user  $DB_NAME
     cat $OMOP_DISTRO/setup_schema.sql | sed  s/XXX/$SYNTHEA_SCHEMA/g  | psql  -U ohdsi_admin_user  $DB_NAME
     message $? " schema setup failed" 5
 
     cd $GIT_BASE/ETL-Synthea
-    sed -i .old1  s/DB_NAME/$DB_NAME/ local_load.R
-    sed -i .old2  s/SYNTHEA_SCHEMA/$SYNTHEA_SCHEMA/ local_load.R
-    sed -i .old3  s/CDM/$CDM_SCHEMA/ local_load.R
-    sed -i .old4  s/VOCABULARY/$VOCABULARY_SCHEMA/ local_load.R
-    sed -i .old5  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" local_load.R
+    sed_file local_synthea_tables.R
+
+    echo "LOADING Synthea data"
+    Rscript local_synthea_tables.R
+    message $? " synthea load failed" 5
+}
+
+function synthea_etl {
+    echo ""
+    echo "** SYNTHEA ETL into $SYNTHEA_SCHEMA $DB_NAME $SYNTHEA_OUTPUT"
+
+    cd $GIT_BASE/ETL-Synthea
+    sed_file local_load_events.R
+    sed_file local_map_tables.R
     if [ -d $SYNTHEA_OUTPUT ]; then    ## TODO
         mkdir -p $SYNTHEA_OUTPUT 
     fi
 
-    Rscript local_load.R
+     echo "CREATING Map tables (LONG)"
+     Rscript local_map_tables.R
+     message $? " synthea create maps failed" 5
+
+    echo "DOING ETL from Synthea to OMOP $GIT_BASE/ETL-Synthea"
+    Rscript local_load_events.R
     message $? " synthea etl failed" 5
+
     cd $GIT_BASE
 }
 
+
 export_git_repos
+
 
 #drop_indexes
 
 synthea
+load_synthea
+truncate_cdm_tables
 synthea_etl
+show_cdm_counts
 
 #create_indexes
