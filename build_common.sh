@@ -13,6 +13,8 @@ HOME=/Users/croeder/work
  PROFILE=local_postgresql
  DB_USER=postgres
 ## DB_USER=croeder
+DB_PASSWORD=
+ADMIN_PASSWORD=
 
 # Cloud SQL via proxy
 ### WEBAPI_SCHEMA=webapi
@@ -31,6 +33,8 @@ HOME=/Users/croeder/work
 ## DB_PORT=5432
 ## PROFILE=cloud_sql_via_ssl
 ## DB_USER=postgres
+#DB_PASSWORD=
+#ADMIN_PASSWORD=
 PEM_DIR=/Users/croeder/play/git/google-cloud
 
 CDM_SCHEMA="cdm"
@@ -79,7 +83,7 @@ function PSQL_no_db {
 }
 
 function PSQL {
-    psql "sslmode=disable hostaddr=$DB_HOST  port=$DB_PORT user=$DB_USER dbname=$DB_NAME password=$DB_PASSWORD"
+    psql "sslmode=disable hostaddr=$DB_HOST  port=$DB_PORT user=ohdsi_app_user dbname=$DB_NAME password=$DB_PASSWORD"
     return $?
 }
 
@@ -161,5 +165,51 @@ function drop_indexes {
     cat  $OMOP_DISTRO/drop_postgresql_indexes_$CDM_SCHEMA.sql | PSQL_admin
     message $? " drop constraints failed" 77
 
+}
+
+function truncate_cdm_tables {
+    # does not truncate vocabulary or source_to_standard_vocab_map or source_to_source_vocab_map
+    echo "truncate cdm.person cascade;" | PSQL_admin
+    echo "truncate cdm.condition_era cascade;" | PSQL_admin
+    echo "truncate cdm.condition_occurrence cascade;" | PSQL_admin
+    echo "truncate cdm.drug_era cascade;" | PSQL_admin
+    echo "truncate cdm.drug_exposure cascade;" | PSQL_admin
+    echo "truncate cdm.measurement cascade;" | PSQL_admin
+    echo "truncate cdm.observation cascade;" | PSQL_admin
+    echo "truncate cdm.observation_period cascade;" | PSQL_admin
+    echo "truncate cdm.procedure_occurrence cascade;" | PSQL_admin
+    echo "truncate cdm.visit_occurrence cascade;" | PSQL_admin
+    echo "truncate cdm.assign_all_visit_ids cascade;" | PSQL_admin
+    echo "truncate cdm.all_visits cascade;" | PSQL_admin
+    echo "truncate cdm.final_visit_ids cascade;" | PSQL_admin
+}
+
+function show_cdm_counts {
+    echo "select count(*) from cdm.person;"
+    echo "select count(*) from cdm.person;" | PSQL
+    echo "select count(*) from cdm.condition_era;"
+    echo "select count(*) from cdm.condition_era;" | PSQL
+    echo "select count(*) from cdm.condition_occurrence;"
+    echo "select count(*) from cdm.condition_occurrence;" | PSQL
+    echo "select count(*) from cdm.drug_era;"
+    echo "select count(*) from cdm.drug_era;" | PSQL
+    echo "select count(*) from cdm.drug_exposure;"
+    echo "select count(*) from cdm.drug_exposure;" | PSQL
+    echo "select count(*) from cdm.measurement;"
+    echo "select count(*) from cdm.measurement;" | PSQL
+    echo "select count(*) from cdm.observation;"
+    echo "select count(*) from cdm.observation;" | PSQL
+    echo "select count(*) from cdm.observation_period;"
+    echo "select count(*) from cdm.observation_period;" | PSQL
+    echo "select count(*) from cdm.procedure_occurrence;"
+    echo "select count(*) from cdm.procedure_occurrence;" | PSQL
+    echo "select count(*) from cdm.visit_occurrence;"
+    echo "select count(*) from cdm.visit_occurrence;" | PSQL
+    echo "select count(*) from cdm.assign_all_visit_ids;"
+    echo "select count(*) from cdm.assign_all_visit_ids;" | PSQL
+    echo "select count(*) from cdm.all_visits;"
+    echo "select count(*) from cdm.all_visits;" | PSQL
+    echo "select count(*) from cdm.final_visit_ids;"
+    echo "select count(*) from cdm.final_visit_ids;" | PSQL
 }
 
