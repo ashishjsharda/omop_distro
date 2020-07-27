@@ -93,7 +93,9 @@ function export_git_repos {
 
     if [ ! -e WebAPI ]; then
         echo "exporting WebAPI"
-        git clone --depth 1 https://github.com/OHDSI/WebAPI.git
+        svn export https://github.com/OHDSI/WebAPI/tags/v2.7.7 > /dev/null
+        mv v2.7.7 WebAPI
+        #git clone --depth 1 https://github.com/OHDSI/WebAPI.git
         message $? "exporting WebAPI failed" 3
     fi
 }
@@ -104,10 +106,12 @@ function build_webapi {
     echo "** build WEBAPI"
 
     cd $GIT_BASE/WebAPI
-    cp $OMOP_DISTRO/webapi_settings.xml .
-    mkdir $GIT_BASE/WebAPI/WebAPIConfig
-    # Set the db connection info in settings.xml and name the profile in the call to maven.
+
+    ##cp $OMOP_DISTRO/webapi_settings.xml .
+    ##mkdir $GIT_BASE/WebAPI/WebAPIConfig
     ####cp webapi_settings.xml $GIT_BASE/WebAPI/WebAPIConfig/settings.xml
+
+    # Set the db connection info in settings.xml and name the profile in the call to maven.
     mvn -P cloud_sql_by_proxy \
         -Dmaven.wagon.http.ssl.insecure=true \
         -Dmaven.wagon.http.ssl.allowall=true \

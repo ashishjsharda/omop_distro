@@ -24,7 +24,6 @@ function export_git_repos {
     echo ""
     echo "** EXPORT REPOS"
     # should use tags here: TODO
-    # WebAPI has tag v2.7.6 from 2020-01-22, still used current
     # Atlas has v.2.7.6 from 2020-01-23, used current
     #   ...I've seen 2.6 recommended https://forums.ohdsi.org/t/atlas-setup-failing/5858/2
 
@@ -32,7 +31,10 @@ function export_git_repos {
 
     if [ ! -e ATLAS ]; then
         echo "exporting ATLAS"
-        git clone --depth 1 https://github.com/OHDSI/Atlas.git
+        #git clone --depth 1 https://github.com/OHDSI/Atlas.git
+        svn export https://github.com/OHDSI/Atlas/tags/v2.7.7 > /dev/null
+        mv v2.7.7 Atlas
+
         message $? "exporting ATLAS failed" 3
     fi
 
