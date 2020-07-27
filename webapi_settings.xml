@@ -1,4 +1,32 @@
 <settings>
+  <localRepository/>
+  <interactiveMode/>
+  <offline/>
+  <pluginGroups/>
+  <servers/>
+  <mirrors/>
+  <proxies/>
+    <!-- set these repositories with https
+        https://stackoverflow.com/questions/59764749/requests-to-http-repo1-maven-org-maven2-return-a-501-https-required-status-an
+    -->
+  <repositories>
+      <repository>
+          <id>central</id>
+          <url>https://repo1.maven.org/maven2</url>
+          <snapshots>
+              <enabled>false</enabled>
+          </snapshots>
+      </repository>
+  </repositories>
+  <pluginRepositories>
+      <pluginRepository>
+          <id>central</id>
+          <url>https://repo1.maven.org/maven2</url>
+          <snapshots>
+              <enabled>false</enabled>
+          </snapshots>
+      </pluginRepository>
+  </pluginRepositories> 
 <profiles>
   <profile>
     <id>test_install</id>
