@@ -141,7 +141,7 @@ function export_git_repos {
     if [ ! -e CommonDataModel ]; then
         echo "exporting CDM"
         #svn export https://github.com/OHDSI/CommonDataModel/tags/v5.3.1 > /dev/null
-        svn export https://github.com/croeder/CommonDataModel/branches/r5.3.1 > /dev/null
+        svn export https://github.com/chrisroederucdenver/CommonDataModel/branches/r5.3.1 > /dev/null
         message $? "exporting CDM failed" 3
         #mv v5.3.1 CommonDataModel
         mv r5.3.1 CommonDataModel
