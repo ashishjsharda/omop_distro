@@ -19,28 +19,34 @@ set -o pipefail
 
 
 SYNTHEA_SCHEMA=synthea
-SYNTHEA_OUTPUT=$GIT_BASE/synthea/output/csv
+SYNTHEA_OUTPUT=$GIT_BASE/synthea_47d09bf/output/csv
+
 
 function export_git_repos {
-# Fetches code for WebAPI and ATLAS from github into the GITBASE.
+# Fetches code  from github into the GITBASE.
     echo ""
     echo "** EXPORT REPOS"
     cd $GIT_BASE
 
     if [ ! -e synthea ]; then
         echo "exporting synthea"
-        svn export https://github.com/synthetichealth/synthea/tag/v2.5.0
-        mv v2.5.0 synthea
-        #svn export https://github.com/synthetichealth/synthea/trunk > /dev/null
+        # The commit 47d09bf was referenced by Anthony Sena in a commit of the create_synthea_tables.sql file.
+        # But, the archive command doesn't work from github as a way of getting the repo at the state of a commit.:
+        # git archive --remote=git@github.com:synthetichealth/synthea.git 47d09bf | (cd synthea_xxx; tar x)
+
+        # So, use two steps instead:
+        git clone git@github.com:synthetichealth/synthea.git
+        mkdir  synthea_47d09bf
+        cd synthea
+        git archive 47d09bf | (cd  ../synthea_47d09bf; tar x)
         message $? "exporting synthea failed" 3
-        mv trunk synthea
     fi
 
     if [ ! -e ETL-Synthea ]; then
         echo "exporting ETL-Synthea"
-        svn export https://github.com/chrisroederucdenver/ETL-Synthea/tags/v0.9.3cr > /dev/null
-        mv v0.9.3cr ETL-Synthea
-        ##git clone git@github.com:chrisroederucdenver/ETL-Synthea.git # head is for CMD v6
+        git clone git@github.com:chrisroederucdenver/ETL-Synthea --branch v5.3.1-updates-combined
+        #svn export https://github.com/OHDSI/ETL-Synthea/tags/v5.3.1 > /dev/null
+        #mv v5.3.1 ETL-Synthea
         message $? "exporting ETL-Synthea failed" 3
     fi
 }
@@ -48,9 +54,11 @@ function export_git_repos {
 function synthea {
     echo ""
     echo "** SYNTHEA $GIT_BASE/synthea"
-    cd $GIT_BASE/synthea
+
+    cd $GIT_BASE/synthea_47d09bf
+
     sed -i .old "s/exporter.csv.export = false/exporter.csv.export = true/" src/main/resources/synthea.properties
-    ./run_synthea
+    ./run_synthea -s 12345 -p 100
     message $? " synthea failed" 4
     cd $GIT_BASE
 }
@@ -64,20 +72,49 @@ function sed_file {
     sed -i .old5  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" $1
 }
 
+
 function load_synthea {
     echo ""
-    echo "** LOAD RAW SYNTHEA ETL"
+    echo "** LOAD RAW SYNTHEA Data"
 
-    echo "drop schema $SYNTHEA_SCHEMA cascade" | psql  -U ohdsi_admin_user  $DB_NAME
-    cat $OMOP_DISTRO/setup_schema.sql | sed  s/XXX/$SYNTHEA_SCHEMA/g  | psql  -U ohdsi_admin_user  $DB_NAME
+    echo "drop schema $SYNTHEA_SCHEMA cascade" | PSQL_admin
+    cat $OMOP_DISTRO/setup_schema.sql | sed  s/XXX/$SYNTHEA_SCHEMA/g  | PSQL_admin
     message $? " schema setup failed" 5
 
     cd $GIT_BASE/ETL-Synthea
-    sed_file local_synthea_tables.R
-
-    echo "LOADING Synthea data"
-    Rscript local_synthea_tables.R
+cd /Users/croeder/work/git/ETL-Synthea
+    Rscript SyntheaLoader.R postgresql localhost test_install_gc ohdsi_admin_user "" $DB_PORT $SYNTHEA_SCHEMA  $SYNTHEA_OUTPUT
     message $? " synthea load failed" 5
+}
+
+function show_synthea_counts {
+    echo "select count(*) from synthea.patient;"
+    echo "select count(*) from synthea.patient;" | PSQL
+
+    echo "select count(*) from synthea.encounters;"
+    echo "select count(*) from synthea.encounters;" | PSQL
+
+    echo "select count(*) from synthea.observations;"
+    echo "select count(*) from synthea.observations;" | PSQL
+
+    echo "select count(*) from synthea.procedures;"
+    echo "select count(*) from synthea.procedures;" | PSQL
+
+    echo "select count(*) from synthea.providers;"
+    echo "select count(*) from synthea.providers;" | PSQL
+}
+
+function do_map_talbes  { # finish
+    # This function can take a while...an hour?
+    echo ""
+    echo "** SYNTHEA map tables "
+
+    cd $GIT_BASE/ETL-Synthea
+
+    echo "CREATING Map tables (LONG)"
+    sed_file local_map_tables.R
+    Rscript local_map_tables.R
+    message $? " synthea create maps failed" 5
 }
 
 function synthea_etl {
@@ -85,32 +122,25 @@ function synthea_etl {
     echo "** SYNTHEA ETL into $SYNTHEA_SCHEMA $DB_NAME $SYNTHEA_OUTPUT"
 
     cd $GIT_BASE/ETL-Synthea
-    sed_file local_load_events.R
-    sed_file local_map_tables.R
-    if [ -d $SYNTHEA_OUTPUT ]; then    ## TODO
-        mkdir -p $SYNTHEA_OUTPUT 
-    fi
-
-     echo "CREATING Map tables (LONG)"
-     Rscript local_map_tables.R
-     message $? " synthea create maps failed" 5
-
+cd /Users/croeder/work/git/ETL-Synthea
     echo "DOING ETL from Synthea to OMOP $GIT_BASE/ETL-Synthea"
-    Rscript local_load_events.R
+
+    Rscript  SyntheaETL.r postgresql $DB_HOST $DB_NAME $DB_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA $CDM_SCHEMA  $VOCABULARY_SCHEMA
     message $? " synthea etl failed" 5
 
     cd $GIT_BASE
 }
 
 
-export_git_repos
-
-
+#export_git_repos
 #drop_indexes
 
-synthea
+#synthea
 load_synthea
+show_synthea_counts
+
 truncate_cdm_tables
+#do_map_tables
 synthea_etl
 show_cdm_counts
 

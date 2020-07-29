@@ -5,39 +5,48 @@ HOME=/Users/croeder/work
 # Set the db connection info in settings.xml and name the profile in the call to maven.
 # Info is duplicated here for build related work. The settings.xml is for Spring.
 
-# Local Postgresql
- WEBAPI_SCHEMA=webapi
+# TODO, this involves MULTIPLE db connections, one for webapi and one for cdm...**TOOD**
+
+# Local Postgresql for webapi
+# DB_HOST=127.0.0.1
+# DB_NAME=test1
+# DB_PORT=5432
+# PROFILE=local_postgresql
+# DB_USER=postgres
+# DB_USER=croeder
+# DB_PASSWORD=""
+#ADMIN_PASSWORD=
+
+# Local Postgresql for cdm for google cloud work
  DB_HOST=127.0.0.1
- DB_NAME=test1
+ DB_NAME=test_install_gc
  DB_PORT=5432
- PROFILE=local_postgresql
- DB_USER=postgres
-## DB_USER=croeder
-DB_PASSWORD=
-ADMIN_PASSWORD=
+ DB_USER=ohdsi_admin_user
+ DB_PASSWORD=""
+ ADMIN_PASSWORD=""
 
 # Cloud SQL via proxy
-### WEBAPI_SCHEMA=webapi
 ### DB_HOST=127.0.0.1
 ### DB_NAME=test1
 ### DB_PORT=5433
 ### PROFILE=cloud_sql_via_proxy
 ### DB_USER=postgres
+### DB_PASSWORD=""
 #DB_PASSWORD=
 #ADMIN_PASSWORD=
 
 ##  Cloud SQL via SSL
-## WEBAPI_SCHEMA=webapi
 ## DB_HOST=34.71.79.17
 ## DB_NAME=test1
 ## DB_PORT=5432
 ## PROFILE=cloud_sql_via_ssl
 ## DB_USER=postgres
-#DB_PASSWORD=
+## DB_PASSWORD=""
 #ADMIN_PASSWORD=
 PEM_DIR=/Users/croeder/play/git/google-cloud
 
 CDM_SCHEMA="cdm"
+WEBAPI_SCHEMA=webapi
 RESULTS_SCHEMA="results"
 # The ddl in the CommonDataModel project doesn't isolate the vocabulary tables,
 # so I don't distinguish here.
