@@ -14,18 +14,16 @@ set -o pipefail
 function export_git_repos {
     cd $GIT_BASE
 
+# 2020-07-29 91f9a20
     if [ ! -e Achilles ]; then
         echo "cloning Achilles"
-        #svn export https://github.com/OHDSI/Achilles/trunk/
-        #mv trunk Achilles
         git clone --depth 1 https://github.com/OHDSI/Achilles > /dev/null
         message $? "cloning Achilles failed" 3
     fi
 
+# 2020-07-25 c255328
     if [ ! -e AchillesWeb ]; then
         echo "exporting AchillesWeb"
-        #svn export https://github.com/OHDSI/AchillesWeb/trunk > /dev/null
-        #mv trunk AchillesWeb
         git clone --depth 1 https://github.com/OHDSI/AchillesWeb
         message $? "exporting AchillesWeb failed" 3
     fi
@@ -46,7 +44,7 @@ function get_results_ddl {
     # Achilles sets this up based on its config.
     # Here as a way of debugging.
     # https://forums.ohdsi.org/t/ddl-scripts-for-results-achilles-results-derived-etc/9618/6
-    wget -O results.ddl "http://127.0.0.1:$TOMCAT_PORT/WebAPI/ddl/results?dialect=postgresql" 
+    wget -O results.ddl "$TOMCAT_URL/WebAPI/ddl/results?dialect=postgresql" 
     message $? " get_results_ddl failed wget" 7
     echo "got results.ddl...."
 
@@ -75,20 +73,18 @@ function achilles {
 }
 
 
+# UNFINISHED
 function achilles_web {
     echo ""
     echo "** ACHILLES WEB "
     cp -r $GIT_BASE/AchillesWeb $TOMCAT_HOME/webapps
     mkdir $TOMCAT_HOME/webapps/AchillesWeb/data
     echo "{ \"datasources\":[ { \"name\":\"$DB_NAME\", \"folder\":\"SAMPLE\", \"cdmVersion\": 5 } ] } " > $TOMCAT_HOME/webapps/AchillesWeb/data/datasources.json
-# UNFINISHED
-# that ugly step of running an R script to extract achilles results into json files and make them available via tomcat in that data directory
+# that step of running an R script to extract achilles results into json files and make them available via tomcat in that data directory
 }
-
 
 export_git_repos
 results_schema
 get_results_ddl
 achilles
- achilles_web
 
