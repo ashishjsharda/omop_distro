@@ -1,5 +1,4 @@
 
-HOME=/Users/croeder/work
 
 
 # Set the db connection info in settings.xml and name the profile in the call to maven.
@@ -7,6 +6,29 @@ HOME=/Users/croeder/work
 
 # TODO, this involves MULTIPLE db connections, one for webapi and one for cdm...**TOOD**
 
+# update these:
+HOME=/Users/croeder/work
+OMOP_DISTRO=$HOME/git/omop_distro
+########################GIT_BASE=$HOME/git/test_install_20200729
+########################DEPLOY_BASE=$HOME/test_deploy_20200729
+ATHENA_VOCAB=$HOME/git/misc_external/athena_vocabulary
+DO_CPT4=false  #DO_CPT4=true
+GIT_BASE=$HOME/git/test_install
+CDM=$GIT_BASE/CommonDataModel/PostgreSQL
+
+DEPLOY_BASE=$HOME/test_deploy
+
+TOMCAT_RELEASE=9.0.37
+TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v${TOMCAT_RELEASE}/bin/apache-tomcat-${TOMCAT_RELEASE}.tar.gz"
+TOMCAT_DIR=apache-tomcat-${TOMCAT_RELEASE}
+TOMCAT_ARCHIVE="apache-tomcat-${TOMCAT_RELEASE}.tar.gz"
+TOMCAT_HOME=$DEPLOY_BASE/tomcat/$TOMCAT_DIR
+TOMCAT_PORT=8080
+TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT
+
+
+# pick a database location, edit.
+# TODO: the PSQL functions below use these. Separating out WebAPI into its own database will require modification there.
 # Local Postgresql for webapi
 # DB_HOST=127.0.0.1
 # DB_NAME=test1
@@ -19,6 +41,7 @@ HOME=/Users/croeder/work
 
 # Local Postgresql for cdm for google cloud work
  DB_HOST=127.0.0.1
+ ######################DB_NAME=test_20200729
  DB_NAME=test_install_gc
  DB_PORT=5432
  DB_USER=ohdsi_admin_user
@@ -46,30 +69,9 @@ HOME=/Users/croeder/work
 PEM_DIR=/Users/croeder/play/git/google-cloud
 
 CDM_SCHEMA="cdm"
-WEBAPI_SCHEMA=webapi
 RESULTS_SCHEMA="results"
-# The ddl in the CommonDataModel project doesn't isolate the vocabulary tables,
-# so I don't distinguish here.
-##VOCABULARY_SCHEMA="vocabulary"
+# The ddl in the CommonDataModel project doesn't isolate the vocabulary tables, # so I don't distinguish here.
 VOCABULARY_SCHEMA="cdm"
-
-OMOP_DISTRO=$HOME/git/omop_distro
-GIT_BASE=$HOME/git/test_install
-DEPLOY_BASE=$HOME/test_deploy
-ATHENA_VOCAB=$HOME/git/misc_external/athena_vocabulary
-#DO_CPT4=true
-DO_CPT4=false
-CDM=$GIT_BASE/CommonDataModel/PostgreSQL
-
-
-TOMCAT_RELEASE=9.0.37
-TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v${TOMCAT_RELEASE}/bin/apache-tomcat-${TOMCAT_RELEASE}.tar.gz"
-TOMCAT_DIR=apache-tomcat-${TOMCAT_RELEASE}
-TOMCAT_ARCHIVE="apache-tomcat-${TOMCAT_RELEASE}.tar.gz"
-TOMCAT_HOME=$DEPLOY_BASE/tomcat/$TOMCAT_DIR
-TOMCAT_PORT=8080
-TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT
-
 
 
 # USING SSL
