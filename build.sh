@@ -2,6 +2,10 @@
 set -euf
 set -o pipefail
 
+#
+# DEPRECATED, use build_uber.sh or the component build scripts direclty.
+#
+
 # This script setups up the gamut of OMOP schemata, runs DDL and loads data. For now,
 # limited to PostgreSQL. Installing Postgres, and downloading athena vocabularies are
 # just outside the scope of this script, though required to be done.
