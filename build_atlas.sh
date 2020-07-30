@@ -2,8 +2,8 @@
 set -euf
 set -o pipefail
 
-# build_atlash.sh :  depends on build_webapi.sh 
-# 
+# build_atlash.sh :  depends on build_webapi.sh
+#
 # This script finishes setting up WebAPI and then installs ATLAS.
 # The build_webapi.sh script triggers the flyway migration to
 # create the webapi schema which needs to complete before running
@@ -17,10 +17,24 @@ set -o pipefail
 . ./build_passwords.sh
 . ./build_common.sh
 
+CDM_DB_NAME=test_install_gc
+WEBAPI_DB_NAME=test_webapi
+WEBAPI_DB_PORT=5432
+WEBAPI_SCHEMA=webapi
+
+function PSQL_admin {
+    psql "sslmode=disable hostaddr=$DB_HOST  port=$DB_PORT user=ohdsi_admin_user dbname=$WEBAPI_DB_NAME password=$ADMIN_PASSWORD"
+    return $?
+}
+
+function PSQL_no_db {
+    psql "sslmode=disable hostaddr=$DB_HOST  port=$DB_PORT user=$DB_USER password=$DB_PASSWORD"
+    return $?
+}
 
 
 function export_git_repos {
-# Fetches code for WebAPI and ATLAS from github into the GITBASE.
+# Fetches code for ATLAS from github into the GITBASE.
     echo ""
     echo "** EXPORT REPOS"
     # should use tags here: TODO
@@ -33,8 +47,7 @@ function export_git_repos {
         echo "exporting ATLAS"
         #git clone --depth 1 https://github.com/OHDSI/Atlas.git
         svn export https://github.com/OHDSI/Atlas/tags/v2.7.7 > /dev/null
-        mv v2.7.7 Atlas
-
+        mv v2.7.7 Atlas 
         message $? "exporting ATLAS failed" 3
     fi
 
@@ -42,26 +55,30 @@ function export_git_repos {
 
 function insert_source_rows {
     echo ""
-    echo " ** INSERT SOURCE ROWS "
+    echo " ** INSERT SOURCE ROWS into $WEBAPI_DB_NAME about $CDM_DB_NAME"
     echo "delete from $WEBAPI_SCHEMA.source_daimon where source_id in (99, 98, 97);" | PSQL_admin
     echo "delete from  $WEBAPI_SCHEMA.source where source_id in (99, 98, 97);" | PSQL_admin
+    message $? "failed to delete" 3
 
     # SOURCES
     echo "insert into $WEBAPI_SCHEMA.source \
          (source_id, source_name, source_key, source_connection, source_dialect, username, password) \
-        values (99, 'Synthea on localhost', '$DB_NAME', 'jdbc:postgresql://localhost:$POSTGRESQL_PORT/$DB_NAME', \
+        values (99, 'Synthea on localhost', '$CDM_DB_NAME', 'jdbc:postgresql://localhost:$DB_PORT/$CDM_DB_NAME', \
                 'postgresql', 'ohdsi_app_user', '');" \
         | PSQL_admin
-    echo "insert into $WEBAPI_SCHEMA.source \
-        (source_id, source_name, source_key, source_connection, source_dialect, username, password) \
-        values (98, 'Synthea on Cloud SQL via proxy', '$DB_NAME', 'jdbc:postgresql://localhost:$POSTGRESQL_PORT/$DB_NAME', \
-                'postgresql', 'ohdsi_app_user', '');" \
-        | PSQL_admin
-    echo "insert into $WEBAPI_SCHEMA.source \
-        (source_id, source_name, source_key, source_connection, source_dialect, username, password) \
-        values (97, 'Synthea in BQ', '$DB_NAME', 'jdbc:postgresql://localhost:$POSTGRESQL_PORT/$DB_NAME', \
-                'postgresql', 'ohdsi_app_user', '');" \
-        | PSQL_admin
+
+    #echo "insert into $WEBAPI_SCHEMA.source \
+    #    (source_id, source_name, source_key, source_connection, source_dialect, username, password) \
+    #    values (98, 'Synthea on Cloud SQL via proxy', '$CDM_DB_NAME', 'jdbc:postgresql://localhost:$DB_PORT/$CDM_DB_NAME', \
+    #            'postgresql', 'ohdsi_app_user', '');" \
+    #    | PSQL_admin
+
+    #echo "insert into $WEBAPI_SCHEMA.source \
+    #    (source_id, source_name, source_key, source_connection, source_dialect, username, password) \
+    #    values (97, 'Synthea in BQ', '$CDM_DB_NAME', 'jdbc:postgresql://localhost:$DB_PORT/$CDM_DB_NAME', \
+    #            'postgresql', 'ohdsi_app_user', '');" \
+    #    | PSQL_admin
+
     echo ""
 
     # LOCAL
@@ -69,10 +86,10 @@ function insert_source_rows {
         values (1, 99, 0, '$CDM_SCHEMA', 1);" \
         | PSQL_admin
     echo "insert into $WEBAPI_SCHEMA.source_daimon (source_daimon_id, source_id, daimon_type, table_qualifier, priority) \
-        values (1, 99, 1, '$VOCABULARY_SCHEMA', 1);" \
+        values (2, 99, 1, '$VOCABULARY_SCHEMA', 1);" \
         | PSQL_admin
     echo "insert into $WEBAPI_SCHEMA.source_daimon (source_daimon_id, source_id, daimon_type, table_qualifier, priority) \
-        values (1, 99, 2, '$RESULTS_SCHEMA', 1);" \
+        values (3, 99, 2, '$RESULTS_SCHEMA', 1);" \
         | PSQL_admin
 
 #    # Cloud SQL
@@ -97,21 +114,25 @@ function insert_source_rows {
 #        values (1, 97, 2, '$RESULTS_SCHEMA', 1);" \
 #        | PSQL_admin
 #
-
-    echo "select * from $WEBAPI_SCHEMA.source_daimon;" | PSQL
-    echo "select * from $WEBAPI_SCHEMA.source;" | PSQL
 }
 
 
+function select_webapi_sources {
+    echo "source"
+    echo "select * from $WEBAPI_SCHEMA.source;" | PSQL_admin
+    echo "source daimon"
+    echo "select * from $WEBAPI_SCHEMA.source_daimon;" | PSQL_admin
+}
+
 function test_webapi_sources {
     echo ""
-    echo "** TEST WEBAPI SOURCES"
+    echo "** TEST WEBAPI SOURCES $WEBAPI_SCHEMA $WEBAPI_DB_NAME"
     wget $TOMCAT_URL/WebAPI/source/sources
     message $? " wgetting WebAPI sources failed" 1
     CONTENTS=$(cat sources)
     rm sources
     if [[ $CONTENTS == '[]' ]] ;then
-        echo "ERROR, no data sources: \"$CONTENTS\" $WEBAPI_SCHEMA $DB_NAME"
+        echo "ERROR, no data sources: \"$CONTENTS\" $WEBAPI_SCHEMA $WEBAPI_DB_NAME"
         echo "check for webapi.source and webapi.source_daimon tables, and entries like those this script's insert_source_rows is inserting."
         echo "also, do we have to have the real schemas behind what they refer to, like vocabulary?"
         open $TOMCAT_URL/WebAPI/source/sources
@@ -124,16 +145,20 @@ function test_webapi_sources {
 }
 
 
-function atlas {
+function build_and_install_atlas {
     echo ""
     echo "**ATLAS"
+
     which npm
     message $? "Couldn't find npm, please install it" 3
+
     cd $GIT_BASE/Atlas
     npm run build
     message $? "npm build of Atlas failed." 3
+
     cp -r $GIT_BASE/Atlas $TOMCAT_HOME/webapps
     cp $OMOP_DISTRO/config-local.js $TOMCAT_HOME/webapps/Atlas/js/
+
     sed -i .old1  s/APP_NAME/WebAPI/            $TOMCAT_HOME/webapps/Atlas/js/config-local.js
     sed -i .old2  s/TOMCAT_PORT/$TOMCAT_PORT/  $TOMCAT_HOME/webapps/Atlas/js/config-local.js
     open $TOMCAT_URL/Atlas/#/home
@@ -141,9 +166,9 @@ function atlas {
 
 
 export_git_repos
-# get_results_ddl
 insert_source_rows
+select_webapi_sources
 test_webapi_sources
-atlas
+build_and_install_atlas
 
 
