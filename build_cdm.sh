@@ -21,9 +21,6 @@ set -o pipefail
 . build_passwords.sh
 . build_common.sh
 
-# override db_name here
-DB_NAME='test1' # TODO use args on these functions
-
 function export_git_repos {
     echo ""
     echo "** EXPORT REPOS"
@@ -32,7 +29,7 @@ function export_git_repos {
 
     if [ ! -e CommonDataModel ]; then
         echo "exporting CDM"
-        svn export https://github.com/chrisroederucdenver/CommonDataModel/branches/r5.3.1.bugfix > /dev/null
+        svn export https://github.com/chrisroederucdenver/CommonDataModel/branches/r5.3.1_fixes-ddl_patch > /dev/null
         message $? "exporting CDM failed" 3
         mv r5.3.1 CommonDataModel
     fi
@@ -93,11 +90,9 @@ function athena {
     cd $GIT_BASE
 }
 
-# assumes make_new_users has run?
-#make_new_db
-#make_new_users
-#export_git_repos
-#cdm
-#create_indexes
-#athena
+make_new_db
+make_new_users
+export_git_repos
+cdm
+athena
 
