@@ -82,7 +82,6 @@ function load_synthea {
     message $? " schema setup failed" 5
 
     cd $GIT_BASE/ETL-Synthea
-cd /Users/croeder/work/git/ETL-Synthea
     Rscript SyntheaLoader.R postgresql localhost test_install_gc ohdsi_admin_user "" $DB_PORT $SYNTHEA_SCHEMA  $SYNTHEA_OUTPUT
     message $? " synthea load failed" 5
 }
@@ -122,7 +121,6 @@ function synthea_etl {
     echo "** SYNTHEA ETL into $SYNTHEA_SCHEMA $DB_NAME $SYNTHEA_OUTPUT"
 
     cd $GIT_BASE/ETL-Synthea
-cd /Users/croeder/work/git/ETL-Synthea
     echo "DOING ETL from Synthea to OMOP $GIT_BASE/ETL-Synthea"
 
     Rscript  SyntheaETL.r postgresql $DB_HOST $DB_NAME $DB_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA $CDM_SCHEMA  $VOCABULARY_SCHEMA
@@ -132,15 +130,15 @@ cd /Users/croeder/work/git/ETL-Synthea
 }
 
 
-#export_git_repos
+export_git_repos
 #drop_indexes
 
-#synthea
+synthea
 load_synthea
 show_synthea_counts
 
 truncate_cdm_tables
-#do_map_tables
+do_map_tables
 synthea_etl
 show_cdm_counts
 
