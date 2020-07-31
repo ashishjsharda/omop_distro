@@ -1,11 +1,11 @@
 
 
 # update these:
-HOME=/Users/croeder/work
+WK_HOME=/Users/croeder/work
 
-OMOP_DISTRO=$HOME/git/omop_distro
-GIT_BASE=$HOME/git/test_install
-DEPLOY_BASE=$HOME/test_deploy
+OMOP_DISTRO=$WK_HOME/git/omop_distro
+GIT_BASE=$WK_HOME/git/test_install
+DEPLOY_BASE=$WK_HOME/test_deploy
 
 TOMCAT_RELEASE=9.0.37
 TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v${TOMCAT_RELEASE}/bin/apache-tomcat-${TOMCAT_RELEASE}.tar.gz"

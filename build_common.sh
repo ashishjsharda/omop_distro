@@ -7,16 +7,16 @@
 # TODO, this involves MULTIPLE db connections, one for webapi and one for cdm...**TOOD**
 
 # update these:
-HOME=/Users/croeder/work
-OMOP_DISTRO=$HOME/git/omop_distro
-########################GIT_BASE=$HOME/git/test_install_20200729
-########################DEPLOY_BASE=$HOME/test_deploy_20200729
-ATHENA_VOCAB=$HOME/git/misc_external/athena_vocabulary
+WK_HOME=/Users/croeder/work
+OMOP_DISTRO=$WK_HOME/git/omop_distro
+########################GIT_BASE=$WK_HOME/git/test_install_20200729
+########################DEPLOY_BASE=$WK_HOME/test_deploy_20200729
+ATHENA_VOCAB=$WK_HOME/git/misc_external/athena_vocabulary
 DO_CPT4=false  #DO_CPT4=true
-GIT_BASE=$HOME/git/test_install
+GIT_BASE=$WK_HOME/git/test_install
 CDM=$GIT_BASE/CommonDataModel/PostgreSQL
 
-DEPLOY_BASE=$HOME/test_deploy
+DEPLOY_BASE=$WK_HOME/test_deploy
 
 TOMCAT_RELEASE=9.0.37
 TOMCAT_ARCHIVE_URL="https://downloads.apache.org/tomcat/tomcat-9/v${TOMCAT_RELEASE}/bin/apache-tomcat-${TOMCAT_RELEASE}.tar.gz"
