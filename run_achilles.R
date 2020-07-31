@@ -10,10 +10,10 @@ if (!require("Achilles")) devtools::install_github("OHDSI/Achilles")
 library(Achilles)
 connectionDetails <- createConnectionDetails(
     dbms="postgresql",
-    server="localhost/DB_NAME",
-    user="ohdsi_admin_user",
-    password="",
-    port="PORT")
+    server="DB_HOST/DB_NAME",
+    user="DB_USER",
+    password="DB_PASSWORD",
+    port="DB_PORT")
 
 achilles(connectionDetails,
     cdmDatabaseSchema="CDM_SCHEMA",

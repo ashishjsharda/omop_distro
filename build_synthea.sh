@@ -57,19 +57,30 @@ function synthea {
 
     cd $GIT_BASE/synthea_47d09bf
 
-    sed -i .old "s/exporter.csv.export = false/exporter.csv.export = true/" src/main/resources/synthea.properties
-    ./run_synthea -s 12345 -p 100
+    #macos
+    #sed -i .old "s/exporter.csv.export = false/exporter.csv.export = true/" src/main/resources/synthea.properties
+    #sed -i .old "s/exporter.fhir.export = true/exporter.fhir.export = false/" src/main/resources/synthea.properties
+    sed -iold "s/exporter.csv.export = false/exporter.csv.export = true/" src/main/resources/synthea.properties
+    sed -iold "s/exporter.fhir.export = true/exporter.fhir.export = false/" src/main/resources/synthea.properties
+    ./run_synthea -s 12345 -p 1000
     message $? " synthea failed" 4
     cd $GIT_BASE
 }
 
 function sed_file {
     echo " * editting $1"
-    sed -i .old1  "s/DB_NAME/$DB_NAME/" $1
-    sed -i .old2  "s/SYNTHEA_SCHEMA/$SYNTHEA_SCHEMA/" $1
-    sed -i .old3  "s/CDM/$CDM_SCHEMA/" $1
-    sed -i .old4  "s/VOCABULARY/$VOCABULARY_SCHEMA/" $1
-    sed -i .old5  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" $1
+	# macos
+    #sed -i .old1  "s/DB_NAME/$DB_NAME/" $1
+    #sed -i .old2  "s/SYNTHEA_SCHEMA/$SYNTHEA_SCHEMA/" $1
+    #sed -i .old3  "s/CDM/$CDM_SCHEMA/" $1
+    #sed -i .old4  "s/VOCABULARY/$VOCABULARY_SCHEMA/" $1
+    #sed -i .old5  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" $1
+	# linux
+    sed -iold1  "s/DB_NAME/$DB_NAME/" $1
+    sed -iold2  "s/SYNTHEA_SCHEMA/$SYNTHEA_SCHEMA/" $1
+    sed -iold3  "s/CDM/$CDM_SCHEMA/" $1
+    sed -iold4  "s/VOCABULARY/$VOCABULARY_SCHEMA/" $1
+    sed -iold5  "s|SYNTHEA_OUTPUT|$SYNTHEA_OUTPUT|" $1
 }
 
 
@@ -82,7 +93,7 @@ function load_synthea {
     message $? " schema setup failed" 5
 
     cd $GIT_BASE/ETL-Synthea
-    Rscript SyntheaLoader.R postgresql localhost test_install_gc ohdsi_admin_user "" $DB_PORT $SYNTHEA_SCHEMA  $SYNTHEA_OUTPUT
+    Rscript SyntheaLoader.r postgresql $DB_HOST $DB_NAME $DB_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA  $SYNTHEA_OUTPUT
     message $? " synthea load failed" 5
 }
 
@@ -103,7 +114,7 @@ function show_synthea_counts {
     echo "select count(*) from synthea.providers;" | PSQL
 }
 
-function do_map_talbes  { # finish
+function do_map_tables  { # finish
     # This function can take a while...an hour?
     echo ""
     echo "** SYNTHEA map tables "
@@ -111,8 +122,7 @@ function do_map_talbes  { # finish
     cd $GIT_BASE/ETL-Synthea
 
     echo "CREATING Map tables (LONG)"
-    sed_file local_map_tables.R
-    Rscript local_map_tables.R
+    Rscript  SyntheaMapLoader.r postgresql 10.6.240.3 $DB_NAME $DB_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA $CDM_SCHEMA $VOCABULARY_SCHEMA 
     message $? " synthea create maps failed" 5
 }
 
@@ -131,7 +141,7 @@ function synthea_etl {
 
 
 export_git_repos
-#drop_indexes
+drop_indexes
 
 synthea
 load_synthea

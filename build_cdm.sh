@@ -29,9 +29,9 @@ function export_git_repos {
 
     if [ ! -e CommonDataModel ]; then
         echo "exporting CDM"
-        svn export https://github.com/chrisroederucdenver/CommonDataModel/branches/r5.3.1_fixes-ddl_patch > /dev/null
+        svn export https://github.com/chrisroederucdenver/CommonDataModel/branches/v5.3.1_fixes-ddl_patch > /dev/null
         message $? "exporting CDM failed" 3
-        mv r5.3.1 CommonDataModel
+        mv v5.3.1_fixes-ddl_patch CommonDataModel
     fi
 }
 

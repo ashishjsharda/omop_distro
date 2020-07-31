@@ -7,7 +7,8 @@
 # TODO, this involves MULTIPLE db connections, one for webapi and one for cdm...**TOOD**
 
 # update these:
-WK_HOME=/Users/croeder/work
+##WK_HOME=/Users/croeder/work
+WK_HOME=/home/croeder6000
 OMOP_DISTRO=$WK_HOME/git/omop_distro
 ########################GIT_BASE=$WK_HOME/git/test_install_20200729
 ########################DEPLOY_BASE=$WK_HOME/test_deploy_20200729
@@ -40,13 +41,13 @@ TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT
 #ADMIN_PASSWORD=
 
 # Local Postgresql for cdm for google cloud work
- DB_HOST=127.0.0.1
- ######################DB_NAME=test_20200729
- DB_NAME=test_install_gc
- DB_PORT=5432
- DB_USER=ohdsi_admin_user
- DB_PASSWORD=""
- ADMIN_PASSWORD=""
+### DB_HOST=127.0.0.1
+### ######################DB_NAME=test_20200729
+### DB_NAME=test_install_gc
+### DB_PORT=5432
+### DB_USER=ohdsi_admin_user
+### DB_PASSWORD=""
+### ADMIN_PASSWORD=""
 
 # Cloud SQL via proxy
 ### DB_HOST=127.0.0.1
@@ -57,6 +58,15 @@ TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT
 ### DB_PASSWORD=""
 #DB_PASSWORD=
 #ADMIN_PASSWORD=
+
+## Cloud SQL from Cloud Engine
+DB_HOST=10.6.240.3
+DB_PORT=5432
+DB_PASSWORD=tr1cky_p8ssword!
+DB_USER=ohdsi_admin_user
+DB_NAME=test1
+ADMIN_PASSWORD=tr1cky_p8ssword!
+
 
 ##  Cloud SQL via SSL
 ## DB_HOST=34.71.79.17
@@ -143,7 +153,8 @@ function create_indexes {
     ##cp $CDM/OMOP\ CDM\ postgresql\ indexes.txt  $OMOP_DISTRO/OMOP\ CDM\ postgresql\ indexes_$CDM_SCHEMA.txt  
     cp $CDM/OMOP_CDM_postgresql_indexes_no_clusters.txt $OMOP_DISTRO/OMOP\ CDM\ postgresql\ indexes_$CDM_SCHEMA.txt  
     # add schema, tricky sed stuff to get newlines
-    sed -i .bkup3  "39i\\
+    #sed -i .bkup3  "39i\\
+    sed -ibkup3  "39i\\
           $SET_SCHEMA\\
     " $OMOP_DISTRO/OMOP\ CDM\ postgresql\ indexes_$CDM_SCHEMA.txt  
     cat $OMOP_DISTRO/OMOP\ CDM\ postgresql\ indexes_$CDM_SCHEMA.txt | PSQL_admin
@@ -152,7 +163,8 @@ function create_indexes {
     # CONSTRAINTS
     cp $CDM/OMOP\ CDM\ postgresql\ constraints.txt  $OMOP_DISTRO/OMOP\ CDM\ postgresql\ constraints_$CDM_SCHEMA.txt  
     # add schema, tricky sed stuff to get newlines
-    sed  -i .bkup2 "39i\\
+    #sed  -i .bkup2 "39i\\
+    sed  -ibkup2 "39i\\
           $SET_SCHEMA\\
     " $OMOP_DISTRO/OMOP\ CDM\ postgresql\ constraints_$CDM_SCHEMA.txt  
 
