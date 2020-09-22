@@ -27,6 +27,13 @@ function export_git_repos {
         git clone --depth 1 https://github.com/OHDSI/AchillesWeb
         message $? "exporting AchillesWeb failed" 3
     fi
+
+    if [ ! -e CommonDataModel ]; then
+        echo "exporting CDM"
+        svn export https://github.com/chrisroederucdenver/CommonDataModel/branches/v5.3.1_fixes-ddl_patch > /dev/null
+        message $? "exporting CDM failed" 3
+        mv v5.3.1_fixes-ddl_patch CommonDataModel
+    fi
 }
 
 function results_schema {
@@ -48,7 +55,9 @@ function get_results_ddl {
     message $? " get_results_ddl failed wget" 7
     echo "got results.ddl...."
 
+}
 
+function run_results_ddl {
     # results.ddl already specifies a results schema name.
     cat results.ddl | sed  s/results/$RESULTS_SCHEMA/g  \
       | sed  s/vocab\\./cdm\\./g  \
@@ -63,11 +72,21 @@ function achilles {
 
     cd $GIT_BASE/Achilles
     cp $OMOP_DISTRO/run_achilles.R .
-    sed -i .old1 s/DB_NAME/$DB_NAME/ run_achilles.R
-    sed -i .old2 s/PORT/$DB_PORT/ run_achilles.R
-    sed -i .old3 s/CDM_SCHEMA/$CDM_SCHEMA/ run_achilles.R
-    sed -i .old4 s/VOCABULARY_SCHEMA/$VOCABULARY_SCHEMA/ run_achilles.R
-    sed -i .old5 s/RESULTS_SCHEMA/$RESULTS_SCHEMA/ run_achilles.R
+	# macos
+    #sed -i .old1 s/DB_NAME/$DB_NAME/ run_achilles.R
+    #sed -i .old2 s/PORT/$DB_PORT/ run_achilles.R
+    #sed -i .old3 s/CDM_SCHEMA/$CDM_SCHEMA/ run_achilles.R
+    #sed -i .old4 s/VOCABULARY_SCHEMA/$VOCABULARY_SCHEMA/ run_achilles.R
+    #sed -i .old5 s/RESULTS_SCHEMA/$RESULTS_SCHEMA/ run_achilles.R
+	# debian
+    sed -iold0 s/DB_USER/$DB_USER/ run_achilles.R
+    sed -iold0 s/DB_PASSWORD/$DB_PASSWORD/ run_achilles.R
+    sed -iold0 s/DB_HOST/$DB_HOST/ run_achilles.R
+    sed -iold2 s/DB_PORT/$DB_PORT/ run_achilles.R
+    sed -iold1 s/DB_NAME/$DB_NAME/ run_achilles.R
+    sed -iold3 s/CDM_SCHEMA/$CDM_SCHEMA/ run_achilles.R
+    sed -iold4 s/VOCABULARY_SCHEMA/$VOCABULARY_SCHEMA/ run_achilles.R
+    sed -iold5 s/RESULTS_SCHEMA/$RESULTS_SCHEMA/ run_achilles.R
     Rscript run_achilles.R .
     message $? " achilles failed"  6
 }
@@ -86,5 +105,7 @@ function achilles_web {
 export_git_repos
 results_schema
 get_results_ddl
+create_indexes
+run_results_ddl
 achilles
 
