@@ -44,7 +44,8 @@ function export_git_repos {
 
     if [ ! -e ETL-Synthea ]; then
         echo "exporting ETL-Synthea"
-        git clone git@github.com:chrisroederucdenver/ETL-Synthea --branch v5.3.1-updates-combined
+        #git clone git@github.com:chrisroederucdenver/ETL-Synthea --branch v5.3.1-updates-combined
+        git clone git@github.com:chrisroederucdenver/ETL-Synthea --branch v5.3.1-updates-for-m-kahn
         #svn export https://github.com/OHDSI/ETL-Synthea/tags/v5.3.1 > /dev/null
         #mv v5.3.1 ETL-Synthea
         message $? "exporting ETL-Synthea failed" 3
