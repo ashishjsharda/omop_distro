@@ -27,6 +27,8 @@ function export_git_repos {
     echo ""
     echo "** EXPORT REPOS"
 
+	mkdir $GIT_BASE 2> /dev/null
+
     cd $GIT_BASE
 
     if [ ! -e CommonDataModel ]; then
