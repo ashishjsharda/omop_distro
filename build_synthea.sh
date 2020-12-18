@@ -45,7 +45,10 @@ function export_git_repos {
     if [ ! -e ETL-Synthea ]; then
         echo "exporting ETL-Synthea"
         #git clone git@github.com:chrisroederucdenver/ETL-Synthea --branch v5.3.1-updates-combined
-        git clone git@github.com:chrisroederucdenver/ETL-Synthea --branch v5.3.1-updates-for-m-kahn
+        #git clone git@github.com:chrisroederucdenver/ETL-Synthea --branch v5.3.1-updates-for-m-kahn
+        git clone git@github.com:Roeder-OHDSI-Forks/ETL-Synthea-1 --branch v5.3.1-updates-for-m-kahn
+		mv ETL-Synthea-1 ETL-Synthea
+
         #svn export https://github.com/OHDSI/ETL-Synthea/tags/v5.3.1 > /dev/null
         #mv v5.3.1 ETL-Synthea
         message $? "exporting ETL-Synthea failed" 3
@@ -94,7 +97,7 @@ function load_synthea {
     message $? " schema setup failed" 5
 
     cd $GIT_BASE/ETL-Synthea
-    Rscript SyntheaLoader.r postgresql $DB_HOST $DB_NAME $DB_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA  $SYNTHEA_OUTPUT
+    Rscript SyntheaLoader.r postgresql $DB_HOST $DB_NAME $ADMIN_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA  $SYNTHEA_OUTPUT
     message $? " synthea load failed" 5
 }
 
@@ -123,7 +126,7 @@ function do_map_tables  { # finish
     cd $GIT_BASE/ETL-Synthea
 
     echo "CREATING Map tables (LONG)"
-    Rscript  SyntheaMapLoader.r postgresql 10.6.240.3 $DB_NAME $DB_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA $CDM_SCHEMA $VOCABULARY_SCHEMA 
+    Rscript  SyntheaMapLoader.r postgresql $DB_HOST $DB_NAME $ADMIN_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA $CDM_SCHEMA $VOCABULARY_SCHEMA 
     message $? " synthea create maps failed" 5
 }
 
@@ -134,7 +137,7 @@ function synthea_etl {
     cd $GIT_BASE/ETL-Synthea
     echo "DOING ETL from Synthea to OMOP $GIT_BASE/ETL-Synthea"
 
-    Rscript  SyntheaETL.r postgresql $DB_HOST $DB_NAME $DB_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA $CDM_SCHEMA  $VOCABULARY_SCHEMA
+    Rscript  SyntheaETL.r postgresql $DB_HOST $DB_NAME $ADMIN_USER "$DB_PASSWORD" $DB_PORT $SYNTHEA_SCHEMA $CDM_SCHEMA  $VOCABULARY_SCHEMA
     message $? " synthea etl failed" 5
 
     cd $GIT_BASE
@@ -144,13 +147,16 @@ function synthea_etl {
 export_git_repos
 drop_indexes
 
+
+echo "USER $ADMIN_USER"
+
 synthea
 load_synthea
 show_synthea_counts
 
-truncate_cdm_tables
+#####truncate_cdm_tables
 do_map_tables
 synthea_etl
 show_cdm_counts
 
-#create_indexes
+create_indexes

@@ -7,16 +7,16 @@
 # TODO, this involves MULTIPLE db connections, one for webapi and one for cdm...**TOOD**
 
 # update these:
-##WK_HOME=/Users/croeder/work
-WK_HOME=/home/croeder6000
+WK_HOME=/home/chris_roeder_hdcuser_org
 OMOP_DISTRO=$WK_HOME/git/omop_distro
-########################GIT_BASE=$WK_HOME/git/test_install_20200729
-########################DEPLOY_BASE=$WK_HOME/test_deploy_20200729
-ATHENA_VOCAB=$WK_HOME/git/misc_external/athena_vocabulary
+ATHENA_VOCAB=$WK_HOME/athena_vocabulary
 DO_CPT4=false  #DO_CPT4=true
+
+# This is where all the repos of supporting projects get cloned.
 GIT_BASE=$WK_HOME/git/test_install
 CDM=$GIT_BASE/CommonDataModel/PostgreSQL
 
+# This is basically for a running TOMCAT for containing/serving the WebAPI and ATLAS
 DEPLOY_BASE=$WK_HOME/test_deploy
 
 TOMCAT_RELEASE=9.0.37
@@ -59,13 +59,22 @@ TOMCAT_URL=http://127.0.0.1:$TOMCAT_PORT
 #DB_PASSWORD=
 #ADMIN_PASSWORD=
 
-## Cloud SQL from Cloud Engine
-DB_HOST=10.6.240.3
+## Cloud SQL from Cloud Engine for croeder6000@gmail
+#DB_HOST=10.6.240.3
+#DB_PORT=5432
+#DB_PASSWORD=tr1cky_p8ssword!
+#DB_USER=ohdsi_admin_user
+#DB_NAME=test1
+#ADMIN_PASSWORD=tr1cky_p8ssword!
+
+## Cloud SQL from Cloud Engine for chris_roeder_hdcuser_org
+DB_HOST=10.43.112.3
 DB_PORT=5432
-DB_PASSWORD=tr1cky_p8ssword!
-DB_USER=ohdsi_admin_user
-DB_NAME=test1
-ADMIN_PASSWORD=tr1cky_p8ssword!
+DB_PASSWORD=synthea2omop
+DB_USER=postgres
+DB_NAME=synthea_chris
+ADMIN_USER=ohdsi_admin_user
+ADMIN_PASSWORD=synthea2omop
 
 
 ##  Cloud SQL via SSL
@@ -99,7 +108,7 @@ VOCABULARY_SCHEMA="cdm"
 
 # IF THE PROXY IS RUNNING, OR a local db - note the different port!
 function PSQL_no_db {
-    psql "sslmode=disable hostaddr=$DB_HOST  port=$DB_PORT user=$DB_USER password=$DB_PASSWORD"
+    psql "sslmode=disable hostaddr=$DB_HOST  port=$DB_PORT user=$DB_USER dbname=postgres password=$DB_PASSWORD"
     return $?
 }
 
@@ -236,3 +245,10 @@ function show_cdm_counts {
     echo "select count(*) from cdm.final_visit_ids;" | PSQL
 }
 
+
+
+export PGHOST=10.43.112.3
+export PGPORT=5432
+export PGDATABASE=synthea_chris
+export PGUSER=postgres
+export PGPASSWORD=synthea2omop

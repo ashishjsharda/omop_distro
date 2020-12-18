@@ -7,6 +7,8 @@
 # the OHDSI Athena website, not the Athena git repo.
 # https://athena.ohdsi.org/search-terms/terms
 #  ATHENA_VOCAB=$HOME/git/misc_external/athena_vocabulary
+#   ATHENA_VOCAB=$WK_HOME/athena_vocabulary
+# I have a copy on Google cloud storage and copied it over.
 #
 # Be careful when running against multiple schema names. This code fetches
 # a fresh copy of the ddl and modifies it with the schema name, so there's
@@ -43,7 +45,8 @@ function cdm {
 
     # add schema, tricky sed stuff to get newlines
     cp $CDM/OMOP\ CDM\ postgresql\ ddl.txt $OMOP_DISTRO/OMOP\ CDM\ postgresql\ ddl_$CDM_SCHEMA.txt
-    sed -i .bkup  "39i\\
+    #sed -i .bkup  "39i\\
+    sed -ibkup  "39i\\
           $SET_SCHEMA\\
     " $OMOP_DISTRO/OMOP\ CDM\ postgresql\ ddl_$CDM_SCHEMA.txt
 
