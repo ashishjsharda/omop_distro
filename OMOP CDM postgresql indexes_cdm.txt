@@ -36,7 +36,6 @@ description:  These primary keys and indices are considered a minimal requiremen
 
 *************************/
 
-set search_path to cdm;
 
 /************************
 *************************

@@ -36,26 +36,6 @@ author:  Patrick Ryan, Clair Blacketer
 *************************/
 
 
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
-set search_path to cdm;
 /************************
 *************************
 *************************
