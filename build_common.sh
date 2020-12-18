@@ -190,7 +190,8 @@ function drop_indexes {
 
     cp $OMOP_DISTRO/drop_postgresql_indexes.sql $OMOP_DISTRO/drop_postgresql_indexes_$CDM_SCHEMA.sql
     # add schema, tricky sed stuff to get newlines
-    sed -i .bkup3  "2i\\
+    ##sed -i .bkup3  "2i\\
+    sed -ibkup3  "2i\\
           $SET_SCHEMA\\
     " $OMOP_DISTRO/drop_postgresql_indexes_$CDM_SCHEMA.sql
 
